@@ -1,3 +1,278 @@
-class CoolstuffScraperService:
-    async def search_cards(self, query: str) -> list[dict[str, str]]:
-        return [{"source": "coolstuffinc", "query": query}]
+import asyncio
+import re
+import time
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
+
+from bs4 import BeautifulSoup
+from httpx import AsyncClient, HTTPStatusError, RequestError
+
+from src.models.cards import CardListing
+from src.utils.constants import BASE_URL, REQUEST_TIMEOUT_SECONDS, USER_AGENT
+from src.utils.utils import deduplicate_listings, to_slug
+
+MAX_SCRAPE_CONCURRENCY = 50
+PARSE_MAX_WORKERS = 32
+CARD_LISTINGS_TTL_SECONDS = 600
+
+_SCRAPER_CLIENT: AsyncClient | None = None
+PARSE_EXECUTOR = ThreadPoolExecutor(max_workers=PARSE_MAX_WORKERS)
+_CARD_LISTINGS_CACHE: dict[str, tuple[float, list[CardListing]]] = {}
+
+
+async def get_scraper_client() -> AsyncClient:
+    global _SCRAPER_CLIENT
+
+    if _SCRAPER_CLIENT is None:
+        _SCRAPER_CLIENT = AsyncClient(
+            headers={"User-Agent": USER_AGENT},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        )
+
+    return _SCRAPER_CLIENT
+
+
+async def close_scraper_client() -> None:
+    global _SCRAPER_CLIENT
+
+    if _SCRAPER_CLIENT is not None:
+        await _SCRAPER_CLIENT.aclose()
+        _SCRAPER_CLIENT = None
+
+
+def _card_cache_key(card_name: str) -> str:
+    return to_slug(card_name)
+
+
+async def scrape_cards(cards: list[str]) -> list[CardListing]:
+    all_listings: list[CardListing] = []
+
+    if not cards:
+        return all_listings
+
+    now = time.monotonic()
+    pending_cards: list[str] = []
+
+    for card_name in cards:
+        key = _card_cache_key(card_name)
+        cached = _CARD_LISTINGS_CACHE.get(key)
+
+        if cached is None:
+            pending_cards.append(card_name)
+            continue
+
+        expires_at, cached_listings = cached
+
+        if expires_at <= now:
+            pending_cards.append(card_name)
+            continue
+
+        all_listings.extend(cached_listings)
+
+    if not pending_cards:
+        return all_listings
+
+    client = await get_scraper_client()
+    semaphore = asyncio.Semaphore(MAX_SCRAPE_CONCURRENCY)
+    tasks: list[asyncio.Task] = []
+    card_names: list[str] = []
+
+    async def _bounded_fetch(url: str) -> str | None:
+        async with semaphore:
+            return await fetch_card_page(client, url)
+
+    for card_name in pending_cards:
+        encoded_name = quote(card_name, safe="").replace("%20", "+")
+        url = f"{BASE_URL}{encoded_name}"
+        task = asyncio.create_task(_bounded_fetch(url))
+        tasks.append(task)
+        card_names.append(card_name)
+
+    htmls = await asyncio.gather(*tasks)
+
+    loop = asyncio.get_running_loop()
+
+    parse_tasks = [
+        loop.run_in_executor(PARSE_EXECUTOR, parse_card_listings, html, card_name)
+        for card_name, html in zip(card_names, htmls)
+        if html
+    ]
+
+    parsed_lists = await asyncio.gather(*parse_tasks)
+
+    now_after_parse = time.monotonic()
+
+    for card_name, listings in zip(card_names, parsed_lists):
+        key = _card_cache_key(card_name)
+        _CARD_LISTINGS_CACHE[key] = (
+            now_after_parse + CARD_LISTINGS_TTL_SECONDS,
+            listings,
+        )
+        all_listings.extend(listings)
+
+    return all_listings
+
+
+def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardListing]:
+    listings: list[CardListing] = []
+    full_text = soup.get_text()
+
+    code_pattern = re.compile(r"Card #:\s*([A-Z]{2,4}\d*-[A-Z]{2,3}\d+)")
+    codes = code_pattern.findall(full_text)
+
+    for code in codes:
+        code_pos = full_text.find("Card #:" + code)
+        if code_pos == -1:
+            code_pos = full_text.find(code)
+
+        if code_pos == -1:
+            continue
+
+        start = max(0, code_pos - 500)
+        end = min(len(full_text), code_pos + 300)
+        section = full_text[start:end]
+
+        rarity = "Unknown"
+        rarity_match = re.search(r"Rarity:\s*([A-Za-z\s]+?)(?:Card #|$)", section)
+        if rarity_match:
+            rarity = rarity_match.group(1).strip()
+
+        price = "N/A"
+        price_match = re.search(r"\$(\d+\.?\d*)", section[section.find(code) :])
+        if price_match:
+            price = f"${price_match.group(1)}"
+
+        stock = 0
+        stock_match = re.search(
+            r"(?:Only\s+)?(\d+)\s+In Stock", section[section.find(code) :]
+        )
+        if stock_match:
+            stock = int(stock_match.group(1))
+
+        condition = "Unknown"
+        condition_section = section[section.find(code) :]
+        if "Near Mint" in condition_section[:100]:
+            condition = "Near Mint"
+        elif "Played" in condition_section[:100]:
+            condition = "Played"
+
+        if code and price != "N/A":
+            listings.append(
+                CardListing(
+                    name=card_name,
+                    code=code,
+                    price=price,
+                    rarity=rarity,
+                    condition=condition,
+                    stock=stock,
+                )
+            )
+
+    return listings
+
+
+def extract_listing_from_row(row, card_name: str) -> CardListing | None:
+    row_text = row.get_text()
+
+    if "$" not in row_text:
+        return None
+
+    code_pattern = re.compile(r"[A-Z]{2,4}\d*-[A-Z]{2,3}\d+")
+    code_match = code_pattern.search(row_text)
+    if not code_match:
+        return None
+
+    code = code_match.group(0)
+
+    rarity = "Unknown"
+    rarity_match = re.search(
+        r"Rarity:\s*([A-Za-z\s]+?)(?:\s*Card #|\s*\(|\s*Only|\s*In Stock|\s*Out)",
+        row_text,
+    )
+    if rarity_match:
+        rarity = rarity_match.group(1).strip()
+
+    condition = "Unknown"
+    if "Near Mint" in row_text:
+        condition = "Near Mint"
+    elif "Played" in row_text:
+        condition = "Played"
+
+    stock = 0
+    stock_match = re.search(r"(?:Only\s+)?(\d+)\s+In Stock", row_text)
+    if stock_match:
+        stock = int(stock_match.group(1))
+
+    price = "N/A"
+    price_match = re.search(r"\$\s*(\d+\.?\d*)", row_text)
+    if price_match:
+        price = f"${price_match.group(1)}"
+
+    set_name = ""
+    set_link = row.select_one("a.ItemSet.display-title")
+    if set_link is not None:
+        set_name = set_link.get_text(strip=True)
+
+    return CardListing(
+        name=f"{card_name} - {set_name}",
+        set=set_name,
+        code=code,
+        price=price,
+        rarity=rarity,
+        condition=condition,
+        stock=stock,
+    )
+
+
+def parse_card_listings(html: str, card_name: str) -> list[CardListing]:
+    soup = BeautifulSoup(html, "html.parser")
+    listings: list[CardListing] = []
+
+    page_card_name = extract_page_card_name(soup, card_name)
+    product_rows = soup.select("div.products-container div.row")
+
+    if not product_rows:
+        product_rows = soup.select("div.row.product-row")
+
+    if not product_rows:
+        product_rows = soup.find_all("div", class_="row")
+
+    for row in product_rows:
+        try:
+            listing = extract_listing_from_row(row, page_card_name)
+            if listing:
+                listings.append(listing)
+        except Exception:
+            continue
+
+    if not listings:
+        listings = parse_listings_from_text(soup, page_card_name)
+
+    return deduplicate_listings(listings)
+
+
+def extract_page_card_name(soup: BeautifulSoup, default_name: str) -> str:
+    header = soup.find("h1", class_="card-name")
+    if header is None:
+        return default_name
+
+    page_name = header.get_text(strip=True)
+    if not page_name:
+        return default_name
+
+    return page_name
+
+
+async def fetch_card_page(client: AsyncClient, url: str) -> str | None:
+    try:
+        response = await client.get(url)
+        response.raise_for_status()
+        return response.text
+    except HTTPStatusError as error:
+        if error.response.status_code == 404:
+            return None
+
+        return None
+    except RequestError:
+        return None
