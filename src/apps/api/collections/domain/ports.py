@@ -1,9 +1,0 @@
-from typing import Protocol
-
-from src.apps.api.collections.domain.entities import Collection, CollectionItem
-
-
-class CollectionRepository(Protocol):
-    async def get(self, collection_id: str) -> Collection | None: ...
-    async def save(self, collection: Collection) -> Collection: ...
-    async def add_item(self, collection_id: str, item: CollectionItem) -> Collection: ...

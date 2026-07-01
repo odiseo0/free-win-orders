@@ -1,12 +1,13 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class ApiSettings(BaseSettings):
-    host: str = "127.0.0.1"
-    port: int = 8000
-    debug: bool = True
+class APISettings(BaseSettings):
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
 
-    model_config = SettingsConfigDict(env_prefix="API_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="API_", env_file=".env", extra="ignore"
+    )
 
 
-api_settings = ApiSettings()
+api_settings = APISettings()

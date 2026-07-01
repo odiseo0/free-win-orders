@@ -1,23 +1,15 @@
 [project]
 name = "free-win"
 version = "0.1.0"
-description = "Aplicacion web para gestionar pedidos comunitarios de cartas"
+description = "Default template for PDM package"
 authors = [
     {name = "Pedro"},
+    {name = "Pedro", email = "87550035+odiseo0@users.noreply.github.com"},
 ]
 dependencies = [
-    "uvicorn[standard]>=0.34.0",
-    "litestar>=2.15.1",
-    "pydantic>=2.10.6",
-    "pydantic-settings>=2.8.1",
-    "sqlalchemy>=2.0.39",
-    "alembic>=1.15.1",
-    "aiosqlite>=0.22.1",
-    "httpx>=0.28.1",
-    "beautifulsoup4>=4.14.3",
-    "openpyxl>=3.1.5",
+    "fastapi[standard]>=0.138.2",
 ]
-requires-python = ">=3.11"
+requires-python = "==3.13.*"
 readme = "README.md"
 license = {text = "MIT"}
 
