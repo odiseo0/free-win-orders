@@ -5,42 +5,30 @@ from httpx import AsyncClient, HTTPStatusError, RequestError
 
 from src.apps.api.shared.constants import BASE_URL, REQUEST_TIMEOUT_SECONDS, USER_AGENT
 
+# optimized for batch processing and heavy loads
 MAX_SCRAPE_CONCURRENCY = 50
-PARSE_MAX_WORKERS = 32
-CARD_LISTINGS_TTL_SECONDS = 600
-
-_SCRAPER_CLIENT: AsyncClient | None = None
-
-
-async def get_scraper_client() -> AsyncClient:
-    global _SCRAPER_CLIENT
-
-    if _SCRAPER_CLIENT is None:
-        _SCRAPER_CLIENT = AsyncClient(
-            headers={"User-Agent": USER_AGENT},
-            timeout=REQUEST_TIMEOUT_SECONDS,
-            follow_redirects=True,
-        )
-
-    return _SCRAPER_CLIENT
 
 
 async def scrape_cards(cards: list[str]) -> list:
-    client = await get_scraper_client()
     semaphore = asyncio.Semaphore(MAX_SCRAPE_CONCURRENCY)
     tasks: list[asyncio.Task] = []
     card_names: list[str] = []
 
-    async def _bounded_fetch(url: str) -> str | None:
+    async def _bounded_fetch(client, url: str) -> str | None:
         async with semaphore:
             return await fetch_card_page(client, url)
 
-    for card_name in cards:
-        encoded_name = quote(card_name, safe="").replace("%20", "+")
-        url = f"{BASE_URL}{encoded_name}"
-        task = asyncio.create_task(_bounded_fetch(url))
-        tasks.append(task)
-        card_names.append(card_name)
+    async with AsyncClient(
+        base_url=BASE_URL,
+        headers={"User-Agent": USER_AGENT},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+        follow_redirects=True,
+    ) as client:
+        for card_name in cards:
+            encoded_name = quote(card_name, safe="").replace("%20", "+")
+            task = asyncio.create_task(_bounded_fetch(client, encoded_name))
+            tasks.append(task)
+            card_names.append(card_name)
 
     htmls = await asyncio.gather(*tasks)
 
