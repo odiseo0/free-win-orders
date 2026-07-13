@@ -1,4 +1,5 @@
 import asyncio
+from typing import Iterable
 from urllib.parse import quote
 
 from httpx import AsyncClient, HTTPStatusError, RequestError
@@ -9,10 +10,9 @@ from src.apps.api.shared.constants import BASE_URL, REQUEST_TIMEOUT_SECONDS, USE
 MAX_SCRAPE_CONCURRENCY = 50
 
 
-async def scrape_cards(cards: list[str]) -> list:
+async def scrape_cards(cards: list[str]) -> zip[Iterable[str, str]]:
     semaphore = asyncio.Semaphore(MAX_SCRAPE_CONCURRENCY)
     tasks: list[asyncio.Task] = []
-    card_names: list[str] = []
 
     async def _bounded_fetch(client, url: str) -> str | None:
         async with semaphore:
@@ -26,13 +26,11 @@ async def scrape_cards(cards: list[str]) -> list:
     ) as client:
         for card_name in cards:
             encoded_name = quote(card_name, safe="").replace("%20", "+")
-            task = asyncio.create_task(_bounded_fetch(client, encoded_name))
-            tasks.append(task)
-            card_names.append(card_name)
+            tasks.append(asyncio.create_task(_bounded_fetch(client, encoded_name)))
 
     htmls = await asyncio.gather(*tasks)
 
-    return htmls
+    return zip(cards, htmls)
 
 
 async def fetch_card_page(client: AsyncClient, url: str) -> str | None:
