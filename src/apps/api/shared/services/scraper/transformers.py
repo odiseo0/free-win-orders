@@ -1,4 +1,17 @@
+import asyncio
+import os
+import re
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from typing import Iterable
+
+from bs4 import BeautifulSoup
+
+from src.apps.api.shared.utils import deduplicate_listings
+
+# make the parse executor reusable to the whole app.
+_PARSE_EXECUTOR: ProcessPoolExecutor | None = None
+PARSE_MAX_WORKERS = max(1, os.process_cpu_count() or 1)
 
 
 @dataclass
@@ -26,6 +39,20 @@ class CollectionItem:
     @property
     def key(self) -> str:
         return f"{self.code}:{self.condition}"
+
+
+def _get_parse_executor() -> ProcessPoolExecutor:
+    global _PARSE_EXECUTOR
+
+    if _PARSE_EXECUTOR is None:
+        _PARSE_EXECUTOR = ProcessPoolExecutor(max_workers=PARSE_MAX_WORKERS)
+
+    return _PARSE_EXECUTOR
+
+
+def _parse_card_listing_task(card_and_html: tuple[str, str]) -> list[CardListing]:
+    card_name, html = card_and_html
+    return parse_card_listings(html, card_name)
 
 
 def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardListing]:
@@ -75,6 +102,7 @@ def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardLi
             listings.append(
                 CardListing(
                     name=card_name,
+                    set="",
                     code=code,
                     price=price,
                     rarity=rarity,
@@ -155,6 +183,7 @@ def parse_card_listings(html: str, card_name: str) -> list[CardListing]:
     for row in product_rows:
         try:
             listing = extract_listing_from_row(row, page_card_name)
+
             if listing:
                 listings.append(listing)
         except Exception:
@@ -164,6 +193,30 @@ def parse_card_listings(html: str, card_name: str) -> list[CardListing]:
         listings = parse_listings_from_text(soup, page_card_name)
 
     return deduplicate_listings(listings)
+
+
+async def transform_card_pages(
+    scraped_pages: Iterable[tuple[str, str | None]],
+) -> list[CardListing]:
+    parse_inputs = [(card_name, html) for card_name, html in scraped_pages if html]
+
+    if not parse_inputs:
+        return []
+
+    loop = asyncio.get_running_loop()
+    tasks = [
+        loop.run_in_executor(
+            _get_parse_executor(), _parse_card_listing_task, parse_input
+        )
+        for parse_input in parse_inputs
+    ]
+    parsed_lists = await asyncio.gather(*tasks)
+
+    listings: list[CardListing] = []
+    for parsed in parsed_lists:
+        listings.extend(parsed)
+
+    return listings
 
 
 def extract_page_card_name(soup: BeautifulSoup, default_name: str) -> str:
@@ -176,27 +229,3 @@ def extract_page_card_name(soup: BeautifulSoup, default_name: str) -> str:
         return default_name
 
     return page_name
-
-
-# PARSE_EXECUTOR = ThreadPoolExecutor(max_workers=PARSE_MAX_WORKERS)
-
-# this is supposed to be part of the transforming
-#    loop = asyncio.get_running_loop()
-
-#   parse_tasks = [
-#        loop.run_in_executor(PARSE_EXECUTOR, parse_card_listings, html, card_name)
-#        for card_name, html in zip(card_names, htmls)
-#        if html
-#    ]
-
-#    parsed_lists = await asyncio.gather(*parse_tasks)
-
-#    now_after_parse = time.monotonic()
-
-#    for card_name, listings in zip(card_names, parsed_lists):
-#        key = _card_cache_key(card_name)
-#        _CARD_LISTINGS_CACHE[key] = (
-#            now_after_parse + CARD_LISTINGS_TTL_SECONDS,
-#            listings,
-#        )
-#        all_listings.extend(listings)

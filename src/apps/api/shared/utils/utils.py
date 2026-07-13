@@ -16,6 +16,7 @@ def deduplicate_listings(listings: list["CardListing"]) -> list["CardListing"]:
 
     for listing in listings:
         key = (listing.code, listing.condition, listing.price)
+
         if key not in seen:
             seen.add(key)
             unique.append(listing)
