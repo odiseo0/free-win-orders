@@ -15,8 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, RelationshipProperty, strategy_options
 from sqlalchemy.sql import Select, select
 
-from src.core.types import Empty, EmptyType
-from src.core.utils.filters import (
+from src.apps.api.shared.utils.filters import (
     After,
     AnyFieldFilter,
     Before,
@@ -28,6 +27,7 @@ from src.core.utils.filters import (
     OrderBy,
     Search,
 )
+from src.apps.api.shared.utils.utils import Empty, EmptyType
 
 from .model import Base
 

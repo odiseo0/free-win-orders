@@ -9,6 +9,8 @@ authors = [
 dependencies = [
     "fastapi[standard]>=0.138.2",
     "beautifulsoup4>=4.15.0",
+    "SQLAlchemy>=2.0.51",
+    "asyncpg>=0.31.0",
 ]
 requires-python = "==3.13.*"
 readme = "README.md"
