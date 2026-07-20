@@ -100,7 +100,7 @@ Mantén I/O asíncrono de extremo a extremo en rutas que accedan a red o base de
 
 Antes de editar:
 
-1. Lee el README y los archivos cercanos al cambio.
+1. Lee la documentación relacionada y los archivos cercanos al cambio.
 2. Comprueba el estado del árbol de trabajo y conserva cambios ajenos.
 3. Identifica la capa responsable y el vocabulario de dominio involucrado.
 

@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:1e75ae27771704ae3872353d921040132c5fd87a543ff42fc17ed17184f0aff4"
+content_hash = "sha256:0a3182f2f310eaaa2749d90e92b2601a1de364bc1ae2652f7d12e3df12e2e5fb"
 
 [[package]]
 name = "annotated-doc"
