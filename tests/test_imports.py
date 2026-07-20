@@ -1,4 +1,4 @@
-from src.applicacion import app
+from src.application import app
 
 
 def test_app_imports() -> None:

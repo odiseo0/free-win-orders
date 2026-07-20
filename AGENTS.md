@@ -25,7 +25,7 @@ No modeles una Orden como una compra instantánea ni asumas que todas sus cartas
 
 ## Prioridades funcionales
 
-El núcleo del dominio son los Pedidos y las Órdenes. El núcleo técnico actual es el servicio de scraping en `src/apps/api/shared/services/scraper/`, que permite buscar cartas y que, progresivamente, debe alimentar una base de datos propia para evitar scraping innecesario.
+El núcleo del dominio son los Pedidos y las Órdenes. El núcleo técnico actual es el servicio de scraping en `src/core/services/scraper/`, que permite buscar cartas y que, progresivamente, debe alimentar una base de datos propia para evitar scraping innecesario.
 
 Características previstas, pero no necesariamente diseñadas o comprometidas:
 
@@ -38,42 +38,44 @@ Trata esta lista como orientación de producto, no como permiso para implementar
 
 ## Estructura del repositorio
 
-Este es un monorepo Python:
+Este repositorio contiene únicamente el backend Python de Free Win:
 
-- `src/apps/api/`: backend FastAPI;
-- `src/apps/client/`: cliente HTML mínimo para pruebas iniciales;
+- `src/application.py`: punto de entrada de FastAPI;
+- `src/api/`: componentes y endpoints de la API;
+- `src/core/`: base de datos, servicios, tipos y utilidades compartidas;
 - `src/settings/`: configuración compartida;
-- `docs/`: documentación técnica y funcional detallada;
+- `docs/`: documentación del proyecto y referencias pendientes de adaptación;
 - `tests/`: pruebas automatizadas.
 
-La API se organiza por componentes (`cards`, `collections`, `orders`, `users` y `shared`) siguiendo una arquitectura hexagonal pragmática:
+La API se organiza por componentes (`cards`, `collections`, `orders` y `users`) siguiendo una arquitectura hexagonal pragmática:
 
 - `domain/`: entidades y reglas de negocio, sin dependencias de FastAPI, SQLAlchemy ni detalles de red;
 - `application/`: casos de uso y coordinación del dominio;
 - `infrastructure/`: adaptadores de entrada y salida, incluido HTTP;
-- `repository/`: persistencia, modelos SQLAlchemy y acceso a datos;
-- `shared/`: capacidades realmente transversales. No lo conviertas en un cajón de sastre.
+- `repository/`: persistencia, modelos SQLAlchemy y acceso a datos.
+
+Las capacidades realmente transversales viven en `src/core/`. No conviertas `core` en un cajón de sastre: antes de mover algo allí, confirma que sea compartido por más de un componente o que forme parte de la infraestructura base de la aplicación.
 
 Respeta la dirección de dependencias: infraestructura y persistencia pueden depender de aplicación/dominio, pero el dominio no debe depender de ellas. Sigue el patrón del componente en el que trabajas y evita refactorizaciones amplias no solicitadas.
 
-Nota: el README puede mencionar `members`, pero el componente presente en el código es `users`. Verifica la intención antes de renombrar o crear uno de los dos.
-
 ## Documentación del proyecto
 
-`AGENTS.md` ofrece el contexto general y las reglas de trabajo para agentes. La documentación detallada debe vivir en `docs/`. Aunque la carpeta esté vacía o alguno de estos archivos todavía no exista, usa esta organización al crear documentación nueva:
+`AGENTS.md` ofrece el contexto general y las reglas de trabajo para agentes. La documentación detallada debe vivir en `docs/`, con esta organización:
 
 - `docs/conventions.md`: convenciones generales de nombres, organización y colaboración;
 - `docs/tech_context.md`: arquitectura, stack, dependencias y decisiones técnicas;
 - `docs/testing.md`: estrategia, herramientas y criterios de pruebas;
 - `docs/general_documentation.md`: explicación funcional y operativa de la aplicación;
-- `docs/patterns.md`: patrones adoptados y ejemplos de implementación;
+- `docs/system_patterns.md`: patrones adoptados y ejemplos de implementación;
 - `docs/formatting.md`: reglas de estilo y formato por lenguaje o tipo de archivo.
 
-Antes de implementar un cambio, consulta los archivos de `docs/` relevantes que ya existan. Si una decisión necesita explicación extensa o específica, documéntala en el archivo correspondiente y mantén `AGENTS.md` como guía concisa, evitando duplicar información que pueda divergir.
+Los documentos añadidos inicialmente a `docs/` se usarán como referencia de estructura y formato, pero parte de su contenido todavía describe otro proyecto. No trates referencias a Payments Webservice, Go, proveedores de pago ni sus rutas como reglas de Free Win. Hasta que cada documento sea adaptado completamente, contrasta cualquier indicación con el código, el README y este archivo. `docs/system_patterns.md` ya está orientado a Free Win, pero también debe verificarse contra la implementación actual.
+
+Antes de implementar un cambio, consulta los archivos de `docs/` relevantes que ya hayan sido adaptados. Si una decisión necesita explicación extensa o específica, documéntala en el archivo correspondiente y mantén `AGENTS.md` como guía concisa, evitando duplicar información que pueda divergir.
 
 ## Scraping y datos externos
 
-El scraper ya está diseñado e implementado en `src/apps/api/shared/services/scraper/` como el núcleo técnico actual de la aplicación. Trátalo como un pipeline existente y conserva la separación de sus responsabilidades de obtención, transformación, validación y persistencia. No lo rediseñes ni reemplaces sin una necesidad explícita. Aunque hoy viva dentro de la API, mantén su lógica desacoplada de FastAPI y de interfaces concretas para conservar la posibilidad de extraerlo a un servicio independiente en el futuro.
+El scraper ya está diseñado e implementado en `src/core/services/scraper/` como el núcleo técnico actual de la aplicación. Trátalo como un pipeline existente y conserva la separación de sus responsabilidades de obtención, transformación, validación y persistencia. No lo rediseñes ni reemplaces sin una necesidad explícita. Aunque hoy forme parte del backend, mantén su lógica desacoplada de FastAPI y de interfaces concretas para conservar la posibilidad de extraerlo a un servicio independiente en el futuro.
 
 Al modificarlo:
 
@@ -90,7 +92,7 @@ Al modificarlo:
 
 El stack actual incluye Python 3.13, FastAPI, SQLAlchemy 2, PostgreSQL/asyncpg y PDM. Alembic forma parte de la dirección prevista para migraciones, aunque la infraestructura correspondiente puede no estar aún creada en el repositorio.
 
-El frontend definitivo no está decidido. El HTML, CSS y JavaScript actuales sirven para pruebas iniciales; Astro es una preferencia, no una decisión cerrada. No incorpores un framework de frontend ni cambies el stack sin que la tarea lo requiera explícitamente.
+Este repositorio es exclusivamente backend. Un frontend podrá desarrollarse por separado en el futuro; no añadas código ni dependencias de frontend a este repositorio salvo que una decisión posterior cambie explícitamente su alcance.
 
 Mantén I/O asíncrono de extremo a extremo en rutas que accedan a red o base de datos. No ocultes operaciones bloqueantes dentro de funciones `async`.
 
@@ -114,15 +116,7 @@ Durante la implementación:
 
 ## Validación
 
-Instala y ejecuta herramientas mediante PDM. Comandos habituales:
-
-```bash
-pdm install
-pdm run pytest
-pdm run fastapi dev src/applicacion.py
-```
-
-Al terminar un cambio, ejecuta al menos las pruebas relacionadas; si el alcance lo permite, ejecuta toda la suite con `pdm run pytest`. Para errores corregidos o reglas nuevas, añade una prueba que falle antes del cambio y pase después.
+Al terminar un cambio, solicta al usuario probarlo manualmente. Para errores corregidos o reglas nuevas, añade una prueba que falle antes del cambio y pase después.
 
 En el scraper, cubre como mínimo transformaciones, resultados vacíos, cartas inexistentes y HTML inesperado. En el dominio, prioriza pruebas de estados y transiciones de Pedido/Orden. En endpoints y repositorios, prueba los límites de integración sin hacer que la suite dependa de servicios externos no controlados.
 
