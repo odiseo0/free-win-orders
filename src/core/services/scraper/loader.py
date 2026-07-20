@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 
-from src.core.db.base import Base, Date
+from src.core.db import Base, Date
 
 
 class CardListing(MappedAsDataclass, Base, Date, kw_only=True):

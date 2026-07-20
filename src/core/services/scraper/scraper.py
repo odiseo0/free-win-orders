@@ -37,6 +37,7 @@ async def fetch_card_page(client: AsyncClient, url: str) -> str | None:
     try:
         response = await client.get(url)
         response.raise_for_status()
+
         return response.text
     except HTTPStatusError as error:
         if error.response.status_code == 404:

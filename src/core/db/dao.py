@@ -86,9 +86,6 @@ class Kwargs(TypedDict, total=False):
 
 @contextmanager
 def catch_sqlalchemy_exception() -> Any:
-    """
-    Catch `SQLAlchemyError` to raise a `DAOExceptionBase`.
-    """
     try:
         yield
     except (IntegrityError, SQLAlchemyError) as e:
@@ -96,8 +93,6 @@ def catch_sqlalchemy_exception() -> Any:
 
 
 class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
-    """DAO that performs all basic CRUD operations."""
-
     def __init__(self, model: type[ModelType]):
         self.model = model
 
@@ -108,7 +103,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         options: list[tuple[str, StrategyOptions]] | None = None,
         **kwargs: Unpack[Kwargs],
     ) -> ModelType | EmptyType:
-        """Get single item by id."""
         statement = select(self.model).where(self.model.id == _id)
 
         if options is not None:
@@ -157,7 +151,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         complex_filters: list[FilterTypes] | None = None,
         **kwargs: Unpack[Kwargs],
     ) -> tuple[list[ModelType], int]:
-        """Get multiple items."""
         statement = select(self.model)
 
         if where is not None:
@@ -197,7 +190,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         options: list[tuple[str, StrategyOptions]] | None = None,
         exclude: set[str] | None = None,
     ) -> ModelType:
-        """Insert item."""
         if isinstance(obj_in, dict) is False:
             obj_in: dict[str, Any] = obj_in.model_dump(mode="python", exclude=exclude)
 
@@ -219,7 +211,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         objs_in: list[CreateSchema],
         commit: bool = True,
     ) -> list[ModelType]:
-        """Insert many items."""
         objs_in_data = [obj_in.model_dump(mode="python") for obj_in in objs_in]
         stmnt = (
             insert(self.model)
@@ -243,7 +234,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         commit: bool = True,
         options: list[tuple[str, StrategyOptions]] | None = None,
     ) -> ModelType:
-        """Update an item."""
         if isinstance(obj_in, dict) is False:
             obj_in: dict[str, Any] = obj_in.model_dump(mode="json", exclude_unset=True)
 

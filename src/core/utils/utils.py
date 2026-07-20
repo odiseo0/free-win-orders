@@ -33,9 +33,10 @@ def sort_listings(listings: list["CardListing"]) -> list["CardListing"]:
     )
 
 
-def extract_price_value(price_str: str) -> float:
+def extract_price_value(price_str: str) -> Decimal:
     if price_str == "N/A":
-        return 0.0
+        return Decimal(0)
+
     try:
         return Decimal(price_str.replace("$", "").replace(",", ""))
     except ValueError:

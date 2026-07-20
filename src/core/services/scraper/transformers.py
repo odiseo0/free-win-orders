@@ -64,6 +64,7 @@ def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardLi
 
     for code in codes:
         code_pos = full_text.find("Card #:" + code)
+
         if code_pos == -1:
             code_pos = full_text.find(code)
 
@@ -76,11 +77,13 @@ def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardLi
 
         rarity = "Unknown"
         rarity_match = re.search(r"Rarity:\s*([A-Za-z\s]+?)(?:Card #|$)", section)
+
         if rarity_match:
             rarity = rarity_match.group(1).strip()
 
         price = "N/A"
         price_match = re.search(r"\$(\d+\.?\d*)", section[section.find(code) :])
+
         if price_match:
             price = f"${price_match.group(1)}"
 
@@ -88,11 +91,13 @@ def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardLi
         stock_match = re.search(
             r"(?:Only\s+)?(\d+)\s+In Stock", section[section.find(code) :]
         )
+
         if stock_match:
             stock = int(stock_match.group(1))
 
         condition = "Unknown"
         condition_section = section[section.find(code) :]
+
         if "Near Mint" in condition_section[:100]:
             condition = "Near Mint"
         elif "Played" in condition_section[:100]:
@@ -122,6 +127,7 @@ def extract_listing_from_row(row, card_name: str) -> CardListing | None:
 
     code_pattern = re.compile(r"[A-Z]{2,4}\d*-[A-Z]{2,3}\d+")
     code_match = code_pattern.search(row_text)
+
     if not code_match:
         return None
 
@@ -132,10 +138,12 @@ def extract_listing_from_row(row, card_name: str) -> CardListing | None:
         r"Rarity:\s*([A-Za-z\s]+?)(?:\s*Card #|\s*\(|\s*Only|\s*In Stock|\s*Out)",
         row_text,
     )
+
     if rarity_match:
         rarity = rarity_match.group(1).strip()
 
     condition = "Unknown"
+
     if "Near Mint" in row_text:
         condition = "Near Mint"
     elif "Played" in row_text:
@@ -143,16 +151,19 @@ def extract_listing_from_row(row, card_name: str) -> CardListing | None:
 
     stock = 0
     stock_match = re.search(r"(?:Only\s+)?(\d+)\s+In Stock", row_text)
+
     if stock_match:
         stock = int(stock_match.group(1))
 
     price = "N/A"
     price_match = re.search(r"\$\s*(\d+\.?\d*)", row_text)
+
     if price_match:
         price = f"${price_match.group(1)}"
 
     set_name = ""
     set_link = row.select_one("a.ItemSet.display-title")
+
     if set_link is not None:
         set_name = set_link.get_text(strip=True)
 
@@ -213,6 +224,7 @@ async def transform_card_pages(
     parsed_lists = await asyncio.gather(*tasks)
 
     listings: list[CardListing] = []
+
     for parsed in parsed_lists:
         listings.extend(parsed)
 
@@ -221,10 +233,12 @@ async def transform_card_pages(
 
 def extract_page_card_name(soup: BeautifulSoup, default_name: str) -> str:
     header = soup.find("h1", class_="card-name")
+
     if header is None:
         return default_name
 
     page_name = header.get_text(strip=True)
+
     if not page_name:
         return default_name
 

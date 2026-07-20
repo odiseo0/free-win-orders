@@ -59,6 +59,7 @@ def build_card_link(card_name: str) -> str:
 
     if not trimmed:
         return ""
+
     encoded = quote(trimmed, safe="").replace("%20", "+")
 
     return f"{BASE_URL}{encoded}"
@@ -94,6 +95,7 @@ def _column_index_by_header(sheet, header: str) -> int | None:
     for col_idx, cell in enumerate(sheet[1], start=1):
         if cell.value is not None and str(cell.value).strip() == header:
             return col_idx
+
     return None
 
 
@@ -107,16 +109,21 @@ def export_collection_to_excel(
 
     workbook = load_workbook(filename=template_path, read_only=False)
     sheet = workbook.active
+
     if sheet is None:
         workbook.close()
+
         raise ValueError("Template has no active sheet")
 
     indices: dict[str, int] = {}
+
     for header in EXPECTED_HEADERS:
         idx = _column_index_by_header(sheet, header)
+
         if idx is None:
             workbook.close()
             raise ValueError(f"Template missing header: {header}")
+
         indices[header] = idx
 
     for row_offset, export_row in enumerate(rows):
