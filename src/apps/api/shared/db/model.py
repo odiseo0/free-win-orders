@@ -11,8 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm import registry as _registry
 from sqlalchemy.util import greenlet_spawn
 
-from src.core.utils import datetime_now, pluralize
-from src.core.utils.helpers import to_snake
+from src.apps.api.shared.utils.utils import datetime_now, pluralize, to_snake
 
 _T = TypeVar("_T", bound=Any)
 meta = MetaData(

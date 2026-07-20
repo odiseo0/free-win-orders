@@ -12,8 +12,7 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.apps.api.shared.db.base import Base, Date
 
 
-class CardListingModel(MappedAsDataclass, Base, Date, kw_only=True):
-    __tablename__ = "card_listings"
+class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
     __table_args__ = (
         UniqueConstraint("code", "condition", name="uq_card_listings_code_condition"),
     )
@@ -79,7 +78,7 @@ class SQLAlchemyScraperStore:
         if not rows:
             return 0
 
-        stmt = postgresql_insert(CardListingModel).values(list(rows))
+        stmt = postgresql_insert(CardListing).values(list(rows))
         stmt = stmt.on_conflict_do_update(
             constraint="uq_card_listings_code_condition",
             set_={
@@ -90,8 +89,10 @@ class SQLAlchemyScraperStore:
                 "stock": stmt.excluded.stock,
             },
         )
+
         await self.db.execute(stmt)
         await self.db.commit()
+
         return len(rows)
 
 

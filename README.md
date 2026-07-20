@@ -26,19 +26,3 @@ Cada componente sigue esta estructura:
 ├─ infrastructure/
 └─ presentation/
 ```
-
-## Arranque
-
-```bash
-pdm install
-pdm run uvicorn src.applicacion:app --reload
-```
-
-## Estado
-
-Este scaffold deja lista la base para seguir implementando el flujo principal:
-
-1. Buscar cartas.
-2. Anadir cartas a una coleccion.
-3. Marcar items como `requested`.
-4. Consolidar pedidos.
