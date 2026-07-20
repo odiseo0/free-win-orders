@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from src.apps.api.shared.services.scraper.loader import load_scraped_data
+from src.core.services.scraper.loader import load_scraped_data
 
 
 @dataclass

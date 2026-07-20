@@ -1,7 +1,6 @@
 import asyncio
 
-from src.apps.api.shared.services.scraper.transformers import transform_card_pages
-
+from src.core.services.scraper.transformers import transform_card_pages
 
 HTML = """
 <html>

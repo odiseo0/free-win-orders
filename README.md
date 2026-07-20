@@ -24,5 +24,5 @@ Cada componente sigue esta estructura:
 ├─ domain/
 ├─ application/
 ├─ infrastructure/
-└─ presentation/
+└─ repository/
 ```
