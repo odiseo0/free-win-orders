@@ -231,12 +231,15 @@ La capa de aplicación usa funciones async a nivel de módulo:
 **Patrón actual**: no se introduce una clase de servicio cuando las funciones no necesitan estado propio. La sesión se recibe explícitamente y el DAO del recurso se importa con alias `dao`.
 
 ```python
+from typing import Never
+
 from src.api.users.repository import dao_users as dao
+from src.core import Ok, Result
 
 
-async def create(db: AsyncSession, obj_in: UserCreate):
-    result = await dao.create(db, obj_in=obj_in)
-    return Ok(result)
+async def create(db: AsyncSession, obj_in: UserCreate) -> Result[User, Never]:
+    user = await dao.create(db, obj_in=obj_in)
+    return Ok(user)
 ```
 
 ### 7.2 Importaciones solo para tipos
@@ -250,26 +253,72 @@ if TYPE_CHECKING:
 
 **Patrón actual**: combina este patrón con `from __future__ import annotations` cuando reduzca ciclos o costo de importación.
 
-### 7.3 Resultados explícitos
+### 7.3 Resultados explícitos y exhaustivos
 
-La aplicación envuelve resultados mediante `Ok` y `Err`:
+`src/core/result.py` define una unión discriminada mínima mediante dataclasses inmutables:
+
+```python
+@dataclass(frozen=True, slots=True)
+class Ok[T]:
+    value: T
+
+
+@dataclass(frozen=True, slots=True)
+class Err[E]:
+    error: E
+
+
+type Result[T, E] = Ok[T] | Err[E]
+```
+
+La aplicación representa los resultados esperados mediante esta unión:
 
 ```text
 DAO result
    ├── success ──→ Ok(value)
-   └── expected failure ──→ Err(reason)
+   └── recoverable failure ──→ Err(TypedDomainError)
 ```
 
-La intención es diferenciar fallos esperados de excepciones inesperadas sin acoplar aplicación a `HTTPException`.
+Los errores recuperables son valores concretos definidos en el dominio, por ejemplo `UserNotFound`. No heredan necesariamente de `Exception`, porque no se lanzan: viajan dentro de `Err`.
 
-**Patrón en evolución**:
+```python
+async def get_one(
+    db: AsyncSession,
+    user_id: int,
+) -> Result[User, UserNotFound]:
+    user = await dao.get(db, user_id)
 
-- falta definir tipos de error propios y consistentes;
-- varios `Err` contienen strings genéricos o tipos que no coinciden con su anotación;
-- `get_one` envuelve el sentinel vacío dentro de `Ok`;
-- la infraestructura devuelve actualmente el wrapper sin una traducción HTTP explícita.
+    if user is Empty:
+        return Err(UserNotFound(user_id))
 
-No copies literalmente esos detalles. Conserva la separación entre resultado de aplicación y respuesta HTTP, pero define el contrato de traducción antes de ampliar este patrón.
+    return Ok(user)
+```
+
+**Patrón actual**:
+
+- usa `Result[T, E]` para errores que forman parte del flujo esperado;
+- usa tipos concretos para `E`, nunca strings o `Exception` genérica;
+- usa `Result[T, Never]` cuando no existe una variante recuperable;
+- reserva excepciones para bugs, invariantes rotas o infraestructura inesperada;
+- no proporciona `unwrap`, para que el consumidor deba reconocer el resultado.
+
+### 7.4 Traducción exhaustiva en infraestructura
+
+La infraestructura consume el `Result` mediante pattern matching:
+
+```python
+match result:
+    case Ok(user):
+        return user
+    case Err(UserNotFound()):
+        raise HTTPException(status_code=404, detail="El usuario no existe")
+    case unexpected:
+        assert_never(unexpected)
+```
+
+`assert_never` permite que un type checker detecte una nueva variante de error no manejada. La garantía depende de ejecutar análisis estático estricto; Python no impone exhaustividad durante compilación como Rust.
+
+**Patrón actual**: los routers nunca devuelven el wrapper. Traducen `Ok` al schema exitoso y cada `Err` a su contrato HTTP.
 
 ## 8) Persistencia mediante DAO genérico
 
@@ -565,7 +614,54 @@ La identidad persistente de una publicación es `(code, condition)`. Ante confli
 
 **Restricción**: la identidad y los campos actualizados deben revisarse si distintas ediciones o vendedores pueden compartir código y condición.
 
-## 14) Separación de I/O y CPU
+### 13.6 Búsqueda de publicaciones con fallback
+
+La búsqueda pública de publicaciones aplica una cadena de resolución explícita:
+
+```text
+Consulta normalizada
+       ↓
+Caché ── hit ──────────────────────────────→ respuesta
+       ↓ miss
+PostgreSQL ── resultados ──────────────────→ caché → respuesta
+       ↓ vacío
+Scraper (Extract + Transform) ─────────────→ caché → respuesta
+```
+
+`CardListingSearch` encapsula la búsqueda externa y `ScraperCardListingSearch` adapta las etapas existentes de extracción y transformación. El caso de uso no conoce HTTPX, Beautiful Soup ni la forma de construir la URL externa.
+
+Los resultados obtenidos del scraper usan `CardListingResponse`, igual que los persistidos. Sus identificadores pueden ser nulos porque responder una búsqueda no implica que la publicación ya haya sido cargada en PostgreSQL.
+
+**Patrón actual**: consulta siempre el caché antes de realizar I/O de base de datos o red y conserva el orden caché → base de datos → proveedor externo.
+
+**Restricción**: la búsqueda interactiva no persiste automáticamente resultados del scraper. La carga continúa siendo una responsabilidad separada del pipeline.
+
+## 14) Caché como puerto sustituible
+
+`src/core/services/cache/` define el protocolo asíncrono `Cache` con operaciones para leer, escribir, eliminar una clave e invalidar un prefijo. Los casos de uso dependen de este protocolo y FastAPI obtiene el proveedor mediante `get_cache`.
+
+```text
+cards application
+       ↓ depends on
+Cache protocol
+       ↑ implemented by
+InMemoryCache / futuro Redis o Valkey
+```
+
+`InMemoryCache` es el proveedor actual para desarrollo. Admite TTL e invalidación por prefijo, pero su contenido pertenece a un único proceso y se pierde al reiniciar.
+
+Las lecturas de Cartas y Publicaciones almacenan respuestas serializadas durante cinco minutos. Las mutaciones de Carta actualizan la clave individual e invalidan las listas afectadas para no servir representaciones obsoletas.
+
+**Patrón actual**:
+
+- las claves incluyen recurso, operación y parámetros normalizados;
+- un valor vacío también se almacena para evitar repetir búsquedas externas sin resultados;
+- los casos de uso trabajan con schemas de respuesta, no con objetos ORM guardados en memoria;
+- cambiar a Redis o Valkey requiere sustituir el proveedor, no modificar los casos de uso.
+
+**Restricción**: `delete_prefix` deberá implementarse de forma acotada en el adaptador distribuido; no debe ejecutar una operación bloqueante sobre todo el keyspace.
+
+## 15) Separación de I/O y CPU
 
 El pipeline distingue:
 
@@ -593,7 +689,7 @@ El executor:
 
 **Patrón en evolución**: falta integrar el cierre del executor con el lifecycle de la aplicación o del proceso que ejecute el pipeline.
 
-## 15) Configuración por responsabilidad
+## 16) Configuración por responsabilidad
 
 `src/settings/` divide settings de API y base de datos:
 
@@ -614,7 +710,7 @@ Cada módulo:
 
 **Restricción**: `DBSettings` aún no contiene todas las propiedades consumidas por la sesión. El patrón de configuración está definido, pero esa implementación debe completarse antes de copiarla.
 
-## 16) Cómo extender un recurso
+## 17) Cómo extender un recurso
 
 Para añadir un recurso dentro de un componente existente:
 
@@ -633,49 +729,33 @@ Para añadir un recurso dentro de un componente existente:
 
 Para crear un componente completo, aplica el mismo flujo dentro de `src/api/<component>/` y evita importar internals de otro componente. Si dos componentes necesitan una capacidad técnica común, evalúa `src/core/`; si comparten una regla de dominio, define primero cuál componente es su propietario.
 
-## 17) Patrones incompletos y legacy
+## 18) Patrones incompletos y legacy
 
-### 17.1 Traducción de resultados a HTTP
-
-**Estado**: incompleto.
-
-Los casos de uso retornan `Ok`/`Err`, pero los routers no traducen todavía esos resultados a payloads y códigos HTTP estables.
-
-Dirección esperada:
-
-```text
-Application Result
-   ├── Ok(value) ──→ response schema + success status
-   └── Err(error) ─→ documented error schema + mapped status
-```
-
-La traducción debe permanecer en infraestructura y los errores deben usar tipos definidos, no strings dispersos.
-
-### 17.2 Eliminación
+### 18.1 Eliminación
 
 **Estado**: incompleto.
 
-Los endpoints devuelven el string `"Eliminado"` y los casos de uso envuelven el resultado del DAO. Debe definirse si el contrato final usa `204 No Content`, un schema de confirmación o el recurso eliminado.
+Los endpoints existentes de Usuarios devuelven el string `"Eliminado"`, mientras el CRUD nuevo de Cartas usa `204 No Content`. Debe definirse un contrato uniforme para el resto de los recursos.
 
-### 17.3 Relaciones de Usuarios y Roles
+### 18.2 Relaciones de Usuarios y Roles
 
 **Estado**: incompleto.
 
 Las relaciones contienen rutas antiguas o inexistentes, falta el lado de Direcciones y el modelo `Role` no está definido en el componente actual. No copies estas cadenas ni cardinalidades a otros modelos.
 
-### 17.4 Contratos de listas
+### 18.3 Contratos de listas
 
 **Estado**: incompleto.
 
-Aplicación produce conceptualmente `(items, count)` dentro de `Ok`, mientras los endpoints anotan `list[Response]`. Debe definirse un schema paginado uniforme.
+Aplicación produce `(items, count)` dentro de `Ok`, mientras los endpoints devuelven únicamente `items`. Debe definirse un schema paginado uniforme para exponer el total sin romper el contrato.
 
-### 17.5 Errores genéricos
+### 18.4 Errores genéricos
 
 **Estado**: legacy.
 
 Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan diagnóstico y contratos. Los cambios nuevos deben usar errores con intención concreta y conservar información interna sin exponerla al cliente.
 
-## 18) Decisiones de patrones
+## 19) Decisiones de patrones
 
 ### DEC-20260720-pragmatic-hexagonal-components
 
@@ -704,41 +784,64 @@ Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan
 - **Evidencia**: `src/core/services/scraper/`.
 - **Revisión**: reevaluar los contratos si el scraper se convierte en un proceso o servicio independiente.
 
-## 19) Referencias
+### DEC-20260721-typed-result
+
+- **Fecha**: 2026-07-21.
+- **Contexto**: los errores recuperables deben ser visibles en las firmas y manejados antes de cruzar una frontera.
+- **Decisión**: implementar `Result[T, E]` dentro de `src/core/`, representar errores recuperables como tipos de dominio y resolverlos exhaustivamente mediante pattern matching y `assert_never`.
+- **Impacto**: los casos de uso no lanzan excepciones para flujo esperado y los routers deben traducir todas las variantes antes de responder.
+- **Evidencia**: `src/core/result.py`, `src/api/users/domain/errors.py`, `src/api/users/application/`, `src/api/users/infrastructure/`.
+- **Revisión**: reevaluar solamente si el type checker elegido no puede verificar exhaustividad o el patrón genera complejidad desproporcionada.
+
+### DEC-20260721-card-listing-cache-aside
+
+- **Fecha**: 2026-07-21.
+- **Contexto**: buscar una publicación no debe repetir scraping cuando el dato ya está disponible localmente.
+- **Decisión**: resolver búsquedas mediante cache-aside en el orden caché → PostgreSQL → scraper y depender de un protocolo de caché neutral al proveedor.
+- **Impacto**: el proveedor actual puede reemplazarse por Redis o Valkey sin cambiar los casos de uso; los resultados externos, incluidos los vacíos, se reutilizan durante el TTL.
+- **Evidencia**: `src/api/cards/application/card_listing_cases.py`, `src/core/services/cache/`, `src/core/services/scraper/search.py`.
+- **Revisión**: reevaluar TTL, claves e invalidación cuando exista un proveedor distribuido y se conozca el patrón real de uso.
+
+## 20) Referencias
 
 - `src/application.py`: composition root de FastAPI.
 - `src/api/api.py`: composición de routers.
 - `src/api/users/`: componente de referencia actual.
+- `src/api/cards/`: CRUD de Cartas y búsqueda de Publicaciones.
 - `src/core/schema/base.py`: modelo Pydantic compartido.
+- `src/core/result.py`: resultado tipado para errores recuperables.
 - `src/core/db/model.py`: base declarativa y mixins.
 - `src/core/db/dao.py`: DAO genérico, filtros y carga.
 - `src/core/db/deps.py`: alcance de sesiones.
 - `src/core/utils/filters.py`: objetos de filtros.
 - `src/core/utils/utils.py`: sentinels y utilidades compartidas.
 - `src/core/services/scraper/`: pipeline ETL.
+- `src/core/services/cache/`: puerto y proveedor temporal de caché.
 - `docs/conventions.md`: reglas normativas.
 - `docs/tech_context.md`: stack y restricciones técnicas.
 - `docs/testing.md`: estrategia de pruebas.
 
-## 20) Glosario
+## 21) Glosario
 
 - **Adaptador**: implementación que conecta una capacidad del sistema con una tecnología o interfaz concreta.
 - **Composition root**: lugar donde se crean y conectan las partes principales de la aplicación.
 - **ETL**: secuencia de extracción, transformación y carga de datos.
 - **Puerto**: contrato que expresa una capacidad necesaria sin fijar su implementación.
+- **Result**: unión `Ok[T] | Err[E]` que hace explícito un éxito o error recuperable.
 - **Recurso**: entidad o concepto expuesto mediante operaciones propias dentro de un componente.
 - **Sentinel**: valor especial que representa un estado como ausencia sin confundirse con datos ordinarios.
 - **Upsert**: inserción que actualiza el registro existente cuando ocurre un conflicto de identidad.
 
-## 21) Checklist de actualización
+## 22) Checklist de actualización
 
 - [ ] ¿La estructura descrita coincide con los componentes actuales?
 - [ ] ¿Los flujos entre router, aplicación y DAO siguen siendo correctos?
 - [ ] ¿Los schemas conservan la separación entre creación, actualización y respuesta?
-- [ ] ¿Cambió el contrato de `Ok`/`Err` o su traducción HTTP?
+- [ ] ¿Cada `Result` usa errores de dominio concretos y se resuelve exhaustivamente?
 - [ ] ¿Cambió la representación de ausencia del DAO?
 - [ ] ¿La paginación tiene ya un contrato estable?
 - [ ] ¿Las relaciones SQLAlchemy pendientes fueron corregidas?
 - [ ] ¿Cambió alguna etapa o límite del scraper?
+- [ ] ¿Las claves, TTL e invalidación del caché siguen siendo coherentes?
 - [ ] ¿Se añadió un patrón que necesita ejemplo, decisión o clasificación?
 - [ ] ¿Un patrón en evolución puede reclasificarse como actual o legacy?

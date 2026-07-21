@@ -61,13 +61,14 @@ Este documento no cubre:
 | `asyncpg` | Driver PostgreSQL asíncrono | `src/core/db/session.py` |
 | `httptools` | Parser HTTP de alto rendimiento para el servidor ASGI | runtime de FastAPI/Uvicorn |
 
+`src/core/result.py` implementa `Result[T, E]`, `Ok[T]` y `Err[E]` con dataclasses y un type alias de Python 3.13. No requiere una dependencia externa.
+
 ### 4.3 Dependencias usadas de forma indirecta o no declarada
 
 El código importa actualmente:
 
 - `httpx` para solicitudes externas;
 - `pydantic-settings` para configuración;
-- `result` para `Ok` y `Err` en casos de uso;
 - pytest para la suite existente.
 
 Estas dependencias no aparecen como entradas directas en `pyproject.toml`. Algunas pueden estar disponibles transitivamente o en el entorno local, pero el proyecto no debe depender de esa casualidad.
@@ -112,6 +113,8 @@ pdm run fastapi dev src/application.py
 | Usuarios | `/users` |
 | Direcciones de usuario | `/user-addresses` |
 | Roles de usuario | `/user-roles` |
+| Cartas | `/cards` |
+| Publicaciones de cartas | `/card-listings` |
 
 Cada router usa una `AsyncSession` proporcionada por la dependencia `get_db`.
 
@@ -154,7 +157,7 @@ src/
 - `src/core/` contiene capacidades compartidas.
 - `src/settings/` separa configuración por responsabilidad.
 - `src/api/users/` es el componente más desarrollado y sirve como referencia actual.
-- `cards`, `collections` y `orders` mantienen la estructura de capas, pero aún están incompletos.
+- `collections` y `orders` mantienen la estructura de capas, pero aún están incompletos.
 
 La dirección de dependencias y responsabilidades se define en `docs/conventions.md`.
 
@@ -260,9 +263,14 @@ El componente usa schemas Pydantic separados para base, creación, actualizació
 
 **Restricción actual**: algunas relaciones y el catálogo externo de roles todavía están incompletos o apuntan a referencias pendientes. La definición de permisos no debe inferirse solamente desde estos modelos.
 
-### 9.2 Publicaciones del scraper
+### 9.2 Cartas y publicaciones
 
-`CardListing`, definido en `src/core/services/scraper/loader.py`, almacena:
+Los modelos principales del componente se encuentran en `src/api/cards/repository/model.py`:
+
+- `Card` conserva metadatos descriptivos y relativamente estáticos;
+- `CardListing` representa la publicación consultada por los jugadores, con precio, condición y stock.
+
+Una publicación almacena:
 
 - nombre;
 - set;
@@ -273,6 +281,8 @@ El componente usa schemas Pydantic separados para base, creación, actualizació
 - stock.
 
 La restricción única combina `code` y `condition`. La carga usa `INSERT ... ON CONFLICT DO UPDATE` de PostgreSQL para actualizar publicaciones existentes.
+
+El componente expone CRUD completo de Carta para apoyar el desarrollo y las pruebas actuales. Las Publicaciones son de lectura y ofrecen consulta individual, listado y búsqueda.
 
 ## 10) Servicios externos
 
@@ -335,7 +345,25 @@ El papel definitivo de esta fuente frente al scraper y la base propia todavía d
 
 Esta separación mantiene abierta la posibilidad de ejecutar el pipeline fuera del proceso de API en el futuro.
 
-## 12) Concurrencia y recursos
+### 11.4 Integración con la búsqueda
+
+`src/core/services/scraper/search.py` adapta extracción y transformación al protocolo `CardListingSearch`. El caso de uso de búsqueda lo invoca únicamente cuando el caché y PostgreSQL no contienen resultados.
+
+La búsqueda interactiva responde y almacena el resultado en caché, pero no ejecuta la etapa de carga. Persistir publicaciones sigue siendo una operación separada para no convertir una petición de usuario en una escritura implícita del pipeline.
+
+## 12) Caché
+
+`src/core/services/cache/` contiene:
+
+- `Cache`: contrato asíncrono independiente del proveedor;
+- `InMemoryCache`: implementación temporal con TTL;
+- `get_cache`: dependencia de FastAPI que selecciona la implementación activa.
+
+El proveedor actual es local al proceso. Redis o Valkey podrán reemplazarlo implementando el mismo protocolo y cambiando la dependencia central. No existe todavía una dependencia ni configuración de conexión para un proveedor distribuido.
+
+Las respuestas de lectura de Cartas y Publicaciones usan un TTL actual de 300 segundos. Las mutaciones de Carta invalidan las claves de listas y actualizan o eliminan su clave individual.
+
+## 13) Concurrencia y recursos
 
 El backend combina dos modelos:
 
@@ -352,15 +380,18 @@ Consideraciones actuales:
 
 No debe añadirse infraestructura de workers antes de definir una necesidad concreta de reintentos, planificación, aislamiento o escalado.
 
-## 13) Pruebas y herramientas de desarrollo
+## 14) Pruebas y herramientas de desarrollo
 
-La suite utiliza pytest en `tests/`, aunque pytest todavía no está declarado directamente en `pyproject.toml`.
+La suite utiliza pytest, declarado en `pyproject.toml`, y vive en `tests/`.
 
 Cobertura actual:
 
 - importación de FastAPI;
 - transformación del scraper;
-- normalización y carga mediante store falso.
+- normalización y carga mediante store falso;
+- caché en memoria;
+- fallback de búsqueda de publicaciones;
+- error tipado al consultar una Carta inexistente.
 
 La dirección de pruebas async es AnyIO con backend `asyncio` y HTTPX `ASGITransport`. La estrategia completa está en `docs/testing.md`.
 
@@ -374,9 +405,9 @@ No hay configuración actual para:
 
 Estas herramientas pueden adoptarse cuando exista una decisión explícita; no deben presentarse todavía como requisitos vigentes.
 
-## 14) Ejecución y despliegue
+## 15) Ejecución y despliegue
 
-### 14.1 Desarrollo local
+### 15.1 Desarrollo local
 
 Comandos documentados:
 
@@ -386,9 +417,9 @@ pdm run fastapi dev src/application.py
 pdm run pytest
 ```
 
-El último comando requiere que pytest esté añadido al entorno de desarrollo.
+El último comando utiliza la dependencia pytest declarada en `pyproject.toml`.
 
-### 14.2 Artefactos de despliegue
+### 15.2 Artefactos de despliegue
 
 El repositorio no contiene actualmente:
 
@@ -403,9 +434,9 @@ El repositorio no contiene actualmente:
 
 La estrategia de despliegue debe documentarse cuando exista un entorno objetivo real.
 
-## 15) Observabilidad y seguridad operativa
+## 16) Observabilidad y seguridad operativa
 
-### 15.1 Observabilidad
+### 16.1 Observabilidad
 
 No existe todavía una solución definida para:
 
@@ -418,7 +449,7 @@ No existe todavía una solución definida para:
 
 La futura trazabilidad del dominio no debe confundirse con observabilidad técnica: ambas necesitan diseño, pero resuelven problemas diferentes.
 
-### 15.2 Seguridad
+### 16.2 Seguridad
 
 Riesgos que deben resolverse antes de exposición pública:
 
@@ -431,7 +462,7 @@ Riesgos que deben resolverse antes de exposición pública:
 
 Los secretos deben permanecer en variables de entorno y nunca registrarse ni incluirse en documentación o fixtures.
 
-## 16) Brechas técnicas conocidas
+## 17) Brechas técnicas conocidas
 
 | Brecha | Impacto | Documento propietario futuro |
 | --- | --- | --- |
@@ -446,7 +477,7 @@ Los secretos deben permanecer en variables de entorno y nunca registrarse ni inc
 
 Esta tabla describe el estado actual; no asigna prioridad automáticamente ni amplía el alcance de tareas futuras.
 
-## 17) Decisiones técnicas
+## 18) Decisiones técnicas
 
 ### DEC-20260720-python-fastapi-backend
 
@@ -475,7 +506,7 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - **Evidencia**: `src/core/services/scraper/`.
 - **Revisión**: reevaluar si requiere despliegue, escalado o planificación independiente.
 
-## 18) Referencias
+## 19) Referencias
 
 - `pyproject.toml`: runtime y dependencias declaradas.
 - `pdm.lock`: resolución de dependencias.
@@ -485,12 +516,13 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - `src/core/db/`: persistencia asíncrona.
 - `src/api/users/`: modelos y flujo CRUD actual.
 - `src/core/services/scraper/`: pipeline de cartas.
+- `src/core/services/cache/`: contrato de caché y proveedor en memoria.
 - `src/core/services/ygopro_api.py`: integración con YGOPRODeck.
 - `tests/`: cobertura automatizada actual.
 - `docs/general_documentation.md`: dominio y estado funcional.
 - `docs/testing.md`: estrategia de pruebas.
 
-## 19) Glosario
+## 20) Glosario
 
 - **ASGI**: interfaz asíncrona usada por FastAPI para servir la aplicación web.
 - **DSN**: cadena con la información necesaria para conectarse a una base de datos.
@@ -499,7 +531,7 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - **Pool**: conjunto reutilizable de conexiones a PostgreSQL.
 - **Upsert**: operación que inserta un registro o actualiza el existente ante un conflicto.
 
-## 20) Checklist de actualización
+## 21) Checklist de actualización
 
 - [ ] ¿La versión de Python y las dependencias coinciden con `pyproject.toml`?
 - [ ] ¿Los routers y puntos de entrada siguen siendo correctos?

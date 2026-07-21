@@ -157,11 +157,16 @@ class UserAddressResponse(UserAddress):
 
 ### 7.2 Resultados y errores
 
-- **Required** los errores esperados deben representarse explícitamente; no se deben ocultar como éxitos vacíos.
-- **Recommended** conserva el patrón `Ok`/`Err` existente en los casos de uso mientras se define de forma completa la traducción de errores en la frontera HTTP.
-- **Required** los mensajes de error deben nombrar el recurso correcto y aportar contexto útil sin revelar datos sensibles.
-- **Required** no uses excepciones genéricas para control de flujo esperado.
-- **Recommended** reserva excepciones para fallos inesperados o para límites en los que exista una traducción clara a un error del dominio.
+- **Required** los errores recuperables se representan mediante `Result[T, E]`, `Ok[T]` y `Err[E]` desde `src/core/result.py`.
+- **Required** `E` es un tipo de error concreto definido por el dominio propietario. No uses `str`, `Any`, `Exception` ni listas vacías como errores.
+- **Required** usa `Never` como parámetro de error cuando una operación no tenga una variante recuperable.
+- **Required** la infraestructura resuelve cada `Result` mediante pattern matching y traduce errores del dominio al contrato HTTP.
+- **Required** usa `assert_never` para que el type checker detecte variantes que no hayan sido manejadas.
+- **Required** un endpoint nunca devuelve `Result`, `Ok` o `Err` directamente.
+- **Required** no implementes ni uses `unwrap` en código de aplicación; manejar el resultado debe ser visible.
+- **Required** no uses excepciones genéricas para control de flujo esperado ni conviertas una excepción desconocida en un `Err` genérico.
+- **Recommended** reserva excepciones para fallos inesperados, invariantes rotas o infraestructura que la operación no pueda recuperar.
+- **Recommended** captura una excepción técnica solamente en el adaptador que pueda traducirla a un error recuperable específico, preservando su causa para diagnóstico.
 
 ## 8) FastAPI y rutas HTTP
 
@@ -170,7 +175,7 @@ class UserAddressResponse(UserAddress):
 - **Required** cada recurso expone un `APIRouter` desde su módulo de infraestructura.
 - **Required** los routers del componente se reexportan desde `infrastructure/__init__.py` y el `__init__.py` del componente.
 - **Required** `src/api/api.py` ensambla los routers y define sus prefijos.
-- **Required** las funciones de endpoint son delgadas: reciben datos, invocan el caso de uso y devuelven el resultado.
+- **Required** las funciones de endpoint son delgadas: reciben datos, invocan el caso de uso, resuelven su `Result` y forman la respuesta HTTP.
 - **Required** las sesiones se obtienen mediante `Annotated[AsyncSession, Depends(get_db)]`.
 
 ### 8.2 Diseño REST

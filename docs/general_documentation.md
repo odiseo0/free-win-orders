@@ -76,7 +76,7 @@ Un Rol de usuario vincula al Usuario con sus permisos o responsabilidades. La de
 
 ### 4.6 Carta y publicación
 
-Una Carta es el artículo que el jugador desea localizar. El scraper produce publicaciones de cartas con información como nombre, set, código, precio, rareza, condición y stock.
+Una Carta contiene los metadatos descriptivos y relativamente estáticos del artículo que el jugador desea localizar. Una Publicación de carta (`CardListing`) es el producto consultable: representa una edición y condición concretas con precio y stock.
 
 Una misma carta puede tener múltiples publicaciones porque el set, la condición, el precio o la disponibilidad pueden variar.
 
@@ -109,9 +109,12 @@ El repositorio contiene actualmente:
 - una aplicación FastAPI creada en `src/application.py`;
 - ensamblaje central de routers en `src/api/api.py`;
 - endpoints CRUD para Usuarios, Direcciones de usuario y Roles de usuario;
+- endpoints CRUD para Cartas;
+- endpoints de lectura y búsqueda para Publicaciones de cartas;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
 - un pipeline de scraping con etapas de extracción, transformación y carga;
+- un contrato de caché sustituible con una implementación temporal en memoria;
 - configuración separada para API y base de datos.
 
 La superficie HTTP registrada actualmente incluye:
@@ -121,19 +124,22 @@ La superficie HTTP registrada actualmente incluye:
 | Usuarios | `/users` | listar, obtener, crear, actualizar y eliminar |
 | Direcciones | `/user-addresses` | listar, obtener, crear, actualizar y eliminar |
 | Roles de usuario | `/user-roles` | listar, obtener, crear, actualizar y eliminar |
+| Cartas | `/cards` | listar, obtener, crear, actualizar y eliminar |
+| Publicaciones | `/card-listings` | listar, obtener y buscar |
 
 La raíz `/` devuelve un mensaje de bienvenida.
 
 ### 6.2 Estructura preparada pero incompleta
 
-Los componentes `cards`, `collections` y `orders` ya existen dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. Su presencia define una dirección de organización, no una API disponible.
+Los componentes `collections` y `orders` ya existen dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. Su presencia define una dirección de organización, no una API disponible.
 
 También están pendientes de definición o finalización:
 
 - estados y transiciones de Pedidos y Órdenes;
 - permisos administrativos y catálogo de roles;
 - representación de resultados parciales por carta;
-- integración del scraper con endpoints de búsqueda;
+- persistencia coordinada de resultados obtenidos por búsqueda;
+- proveedor distribuido Redis o Valkey para el caché;
 - migraciones Alembic del esquema actual;
 - contrato uniforme de errores HTTP.
 
@@ -250,6 +256,16 @@ Normalización y deduplicación
     ↓
 Upsert de publicaciones en PostgreSQL
 ```
+
+### 9.4 Búsqueda interactiva
+
+`GET /card-listings/search?query=<nombre>` consulta primero el caché y después PostgreSQL. Solamente cuando ambas fuentes carecen de resultados utiliza las etapas de extracción y transformación del scraper. La respuesta obtenida se guarda en caché durante cinco minutos, incluidos los resultados vacíos.
+
+```text
+Caché → PostgreSQL → Scraper → Caché → Usuario
+```
+
+La búsqueda no ejecuta automáticamente la carga a PostgreSQL. Esto mantiene separada la respuesta interactiva de la persistencia del pipeline.
 
 Aunque hoy forma parte del backend, sus límites deben permitir separarlo en un servicio independiente si el crecimiento real del proyecto lo justifica.
 

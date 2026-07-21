@@ -34,6 +34,10 @@ La suite actual contiene:
 - `tests/test_imports.py`: comprueba que la aplicación FastAPI pueda importarse;
 - `tests/test_scraper_transformers.py`: comprueba la transformación de una página HTML local en una publicación;
 - `tests/test_scraper_loader.py`: comprueba la normalización previa a la carga y el comportamiento de lotes vacíos.
+- `tests/test_cache.py`: comprueba la invalidación por prefijo del caché en memoria;
+- `tests/test_card_listing_search.py`: comprueba el fallback base de datos → scraper y la reutilización del resultado cacheado;
+- `tests/test_card_cases.py`: comprueba el error recuperable al consultar una Carta inexistente;
+- `tests/test_result.py`: comprueba las variantes inmutables del resultado tipado.
 
 Estas pruebas cubren el arranque mínimo y partes de transformación/carga del scraper. Todavía no existe cobertura automatizada para:
 
@@ -43,13 +47,13 @@ Estas pruebas cubren el arranque mínimo y partes de transformación/carga del s
 - integración real con PostgreSQL;
 - configuración de entorno;
 - extracción HTTP del scraper;
-- componentes `cards`, `collections` y `orders`.
+- endpoints HTTP de `cards` y los componentes `collections` y `orders`.
 
 ### 3.2 Patrón async actual
 
 Las pruebas actuales ejecutan coroutines mediante `asyncio.run`. Este patrón se conserva como comportamiento existente, pero las nuevas pruebas asíncronas deben usar AnyIO para compartir correctamente el event loop entre FastAPI, HTTPX y SQLAlchemy.
 
-No existe todavía una configuración completa de dependencias de desarrollo en `pyproject.toml`. Antes de tratar los comandos de esta guía como parte estable del entorno, pytest y cualquier plugin necesario deben declararse explícitamente.
+pytest está declarado en `pyproject.toml`. Los plugins adicionales deben declararse explícitamente antes de depender de ellos en la suite.
 
 ## 4) Principios de pruebas
 
@@ -149,10 +153,14 @@ Objetivos:
 - comprobar parámetros enviados a persistencia;
 - comprobar el valor `Ok` en operaciones exitosas;
 - comprobar el valor `Err` en fallos esperados;
+- comprobar cada tipo de error recuperable declarado por el caso de uso;
+- comprobar que la infraestructura traduzca cada `Err` al código y payload HTTP esperados;
 - comprobar paginación, filtros y ordenamiento coordinados por aplicación;
 - comprobar que no se confunda un resultado vacío con un error inesperado.
 
 Evita mockear cada llamada interna. El fake debe representar el límite que el caso de uso consume.
+
+Un error nuevo debe hacer fallar el manejo exhaustivo mediante `assert_never` durante el análisis estático y debe añadir una prueba de su traducción. No uses `unwrap` en pruebas de aplicación si esto oculta la variante que se está comprobando.
 
 ### 6.3 Endpoints FastAPI
 
@@ -282,6 +290,20 @@ Las pruebas de settings deben comprobar:
 - que secretos no aparezcan en representaciones o errores.
 
 Las pruebas que modifiquen variables de entorno deben usar mecanismos temporales de pytest y restaurar el estado al finalizar.
+
+### 6.8 Caché y búsqueda de publicaciones
+
+Comprueba por separado:
+
+- hit de caché sin acceso posterior a base de datos o red;
+- miss de caché con resultados de PostgreSQL;
+- miss de caché y PostgreSQL con fallback al scraper;
+- almacenamiento de resultados externos y de listas vacías;
+- normalización de la consulta usada en la clave;
+- expiración e invalidación de claves;
+- que los tests nunca contacten Redis, Valkey ni el sitio externo sin una integración explícita.
+
+Usa `InMemoryCache` o un fake del protocolo `Cache` en pruebas de aplicación. Las pruebas de un futuro adaptador Redis o Valkey deben ejecutarse contra una instancia desechable y no reemplazan las pruebas del orden de resolución del caso de uso.
 
 ## 7) Fixtures, fakes y datos
 
@@ -463,6 +485,8 @@ La cobertura numérica podrá adoptarse cuando la suite tenga una base más ampl
 - `src/application.py`: aplicación usada por el transporte ASGI.
 - `src/core/db/deps.py`: dependencia de sesión reemplazable.
 - `src/core/db/dao.py`: comportamiento genérico de persistencia.
+- `src/core/result.py`: unión tipada para errores recuperables.
+- `src/core/services/cache/`: contrato y proveedor temporal de caché.
 - `src/core/services/scraper/`: etapas del pipeline.
 - `docs/conventions.md`: convenciones de implementación.
 - `docs/formatting.md`: formato de documentación y decisiones.
