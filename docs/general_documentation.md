@@ -114,8 +114,8 @@ El repositorio contiene actualmente:
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
 - un pipeline de scraping con etapas de extracción, transformación y carga;
-- un contrato de caché sustituible con una implementación temporal en memoria;
-- configuración separada para API y base de datos.
+- un contrato de caché sustituible con implementaciones en memoria y Valkey;
+- configuración separada para API, caché y base de datos.
 
 La superficie HTTP registrada actualmente incluye:
 

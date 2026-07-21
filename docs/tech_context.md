@@ -33,7 +33,8 @@ Este documento no cubre:
 | Backend HTTP | FastAPI con routers para Usuarios, Direcciones y Roles |
 | Runtime | Python 3.13 |
 | Persistencia | SQLAlchemy 2 async y PostgreSQL mediante asyncpg |
-| Configuración | pydantic-settings dividido en API y base de datos |
+| Configuración | pydantic-settings dividido en API, caché y base de datos |
+| Caché | `InMemoryCache` local o Valkey mediante `valkey-py` async |
 | Scraper | Extracción async, transformación multiproceso y carga PostgreSQL |
 | Gestor del proyecto | PDM |
 | Migraciones | Alembic previsto, todavía no configurado |
@@ -524,7 +525,7 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - `src/core/db/`: persistencia asíncrona.
 - `src/api/users/`: modelos y flujo CRUD actual.
 - `src/core/services/scraper/`: pipeline de cartas.
-- `src/core/services/cache/`: contrato de caché y proveedor en memoria.
+- `src/core/services/cache/`: contrato de caché y proveedores en memoria/Valkey.
 - `src/core/services/ygopro_api.py`: integración con YGOPRODeck.
 - `tests/`: cobertura automatizada actual.
 - `docs/general_documentation.md`: dominio y estado funcional.
