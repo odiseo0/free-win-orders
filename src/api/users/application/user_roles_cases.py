@@ -1,23 +1,27 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Never
 
-from result import Err, Ok
-
-from src.api.users.domain import UserRoleCreate, UserRoleUpdate
+from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdate
 from src.api.users.repository import UserRole
 from src.api.users.repository import dao_user_roles as dao
+from src.core import Err, Ok, Result
 from src.core.utils.filters import FilterTypes, OrderBy
-from src.core.utils.utils import EmptyType
+from src.core.utils.utils import Empty
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def get_one(db: AsyncSession, user_role_id: int) -> Ok[UserRole] | Err[EmptyType]:
-    data = await dao.get(db, user_role_id)
+async def get_one(
+    db: AsyncSession, user_role_id: int
+) -> Result[UserRole, UserRoleNotFound]:
+    user_role = await dao.get(db, user_role_id)
 
-    return Ok(data)
+    if user_role is Empty:
+        return Err(UserRoleNotFound(user_role_id))
+
+    return Ok(user_role)
 
 
 async def get_multi(
@@ -27,7 +31,7 @@ async def get_multi(
     filters: dict[str, Any] | None = None,
     order_by: OrderBy | list[str, Any] = None,
     complex_filters: list[FilterTypes] | None = None,
-) -> Ok[tuple[list[UserRole], int]] | Err[list]:
+) -> Result[tuple[list[UserRole], int], Never]:
     data, count = await dao.get_multi(
         db,
         page=(page - 1) * (shows or 20),
@@ -37,40 +41,36 @@ async def get_multi(
         complex_filters=complex_filters,
     )
 
-    if count is None:
-        return Err([])
-
     return Ok((data, count))
 
 
-async def create(db: AsyncSession, obj_in: UserRoleCreate) -> Ok[UserRole] | Err[None]:
-    result = await dao.create(db, obj_in=obj_in)
+async def create(db: AsyncSession, obj_in: UserRoleCreate) -> Result[UserRole, Never]:
+    user_role = await dao.create(db, obj_in=obj_in)
 
-    if result is None:
-        return Err("No se pudo crear el usuario")
-
-    return Ok(result)
+    return Ok(user_role)
 
 
 async def update(
     db: AsyncSession,
     user_role_id: int,
     obj_in: UserRoleUpdate,
-) -> Ok[UserRole] | Err[None]:
-    result = await dao.update(db, user_role_id, obj_in)
-
-    if result is None:
-        return Err("Error")
-
-    return Ok(result)
-
-
-async def remove(db: AsyncSession, user_role_id: int) -> Ok[UserRole] | Err[None]:
+) -> Result[UserRole, UserRoleNotFound]:
     user_role = await dao.get(db, user_role_id)
 
-    if user_role is EmptyType:
-        return Err("Error")
+    if user_role is Empty:
+        return Err(UserRoleNotFound(user_role_id))
 
-    result = await dao.delete(db, db_object=user_role)
+    updated_user_role = await dao.update(db, user_role_id, obj_in)
 
-    return Ok(result)
+    return Ok(updated_user_role)
+
+
+async def remove(db: AsyncSession, user_role_id: int) -> Result[None, UserRoleNotFound]:
+    user_role = await dao.get(db, user_role_id)
+
+    if user_role is Empty:
+        return Err(UserRoleNotFound(user_role_id))
+
+    await dao.delete(db, db_object=user_role)
+
+    return Ok(None)

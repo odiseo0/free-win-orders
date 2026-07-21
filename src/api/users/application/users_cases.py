@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Never
 
-from result import Err, Ok
-
-from src.api.users.domain import UserCreate, UserUpdate
+from src.api.users.domain import UserCreate, UserNotFound, UserUpdate
 from src.api.users.repository import User
 from src.api.users.repository import dao_users as dao
+from src.core import Err, Ok, Result
 from src.core.utils.filters import FilterTypes, OrderBy
-from src.core.utils.utils import EmptyType
+from src.core.utils.utils import Empty
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def get_one(db: AsyncSession, user_id: int) -> Ok[User] | Err[EmptyType]:
-    data = await dao.get(db, user_id)
+async def get_one(db: AsyncSession, user_id: int) -> Result[User, UserNotFound]:
+    user = await dao.get(db, user_id)
 
-    return Ok(data)
+    if user is Empty:
+        return Err(UserNotFound(user_id))
+
+    return Ok(user)
 
 
 async def get_multi(
@@ -27,7 +29,7 @@ async def get_multi(
     filters: dict[str, Any] | None = None,
     order_by: OrderBy | list[str, Any] = None,
     complex_filters: list[FilterTypes] | None = None,
-) -> Ok[tuple[list[User], int]] | Err[list]:
+) -> Result[tuple[list[User], int], Never]:
     data, count = await dao.get_multi(
         db,
         page=(page - 1) * (shows or 20),
@@ -37,40 +39,36 @@ async def get_multi(
         complex_filters=complex_filters,
     )
 
-    if count is None:
-        return Err([])
-
     return Ok((data, count))
 
 
-async def create(db: AsyncSession, obj_in: UserCreate) -> Ok[User] | Err[None]:
-    result = await dao.create(db, obj_in=obj_in)
+async def create(db: AsyncSession, obj_in: UserCreate) -> Result[User, Never]:
+    user = await dao.create(db, obj_in=obj_in)
 
-    if result is None:
-        return Err("No se pudo crear el usuario")
-
-    return Ok(result)
+    return Ok(user)
 
 
 async def update(
     db: AsyncSession,
     user_id: int,
     obj_in: UserUpdate,
-) -> Ok[User] | Err[None]:
-    result = await dao.update(db, user_id, obj_in)
-
-    if result is None:
-        return Err("Error")
-
-    return Ok(result)
-
-
-async def remove(db: AsyncSession, user_id: int) -> Ok[User] | Err[None]:
+) -> Result[User, UserNotFound]:
     user = await dao.get(db, user_id)
 
-    if user is EmptyType:
-        return Err("Error")
+    if user is Empty:
+        return Err(UserNotFound(user_id))
 
-    result = await dao.delete(db, db_object=user)
+    updated_user = await dao.update(db, user_id, obj_in)
 
-    return Ok(result)
+    return Ok(updated_user)
+
+
+async def remove(db: AsyncSession, user_id: int) -> Result[None, UserNotFound]:
+    user = await dao.get(db, user_id)
+
+    if user is Empty:
+        return Err(UserNotFound(user_id))
+
+    await dao.delete(db, db_object=user)
+
+    return Ok(None)
