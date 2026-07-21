@@ -75,6 +75,10 @@ async def test_valkey_cache_applies_namespace_and_ttl() -> None:
     assert client.expirations["free-win:test:cards:item:1"] == 300
     assert await cache.get("cards:item:1") == "payload"
 
+    await cache.delete("cards:item:1")
+
+    assert await cache.get("cards:item:1") is None
+
 
 @pytest.mark.anyio
 async def test_valkey_cache_decodes_byte_responses() -> None:

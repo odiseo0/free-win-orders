@@ -18,6 +18,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     finally:
         await close_cache()
 
+
 app = FastAPI(
     title="Free Win",
     description="Free Win API REST.",

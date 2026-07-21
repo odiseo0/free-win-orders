@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 
 
 class AsyncValkeyClient(Protocol):
@@ -15,7 +15,7 @@ class AsyncValkeyClient(Protocol):
         value: str,
         *,
         ex: int | None = None,
-    ) -> Any: ...
+    ) -> bool: ...
 
     async def delete(self, *keys: str | bytes) -> int: ...
 

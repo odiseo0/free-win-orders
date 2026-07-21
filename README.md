@@ -10,6 +10,7 @@ Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes po
 - FastAPI
 - SQLAlchemy 2
 - PostgreSQL mediante `asyncpg`
+- Valkey mediante `valkey-py` como proveedor distribuido de caché
 - PDM
 
 ## Estructura
@@ -39,6 +40,7 @@ Los componentes de `src/api/` siguen una arquitectura hexagonal pragmática:
 ```
 
 El scraper está implementado en `src/core/services/scraper/`.
+El caché vive en `src/core/services/cache/` y permite alternar entre memoria y Valkey mediante `CACHE_BACKEND`.
 
 ## Documentación
 
