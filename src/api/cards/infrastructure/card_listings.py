@@ -3,7 +3,7 @@ from typing import Annotated, assert_never
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.cards.application import card_listing_cases
+from src.api.cards.application import get_multi_listings, get_one_listing, search
 from src.api.cards.domain import (
     CardListingNotFound,
     CardListingResponse,
@@ -27,7 +27,7 @@ async def search_card_listings(
     ],
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[CardListingResponse]:
-    result = await card_listing_cases.search(
+    result = await search(
         db,
         cache,
         scraper,
@@ -49,7 +49,7 @@ async def read_card_listings(
     page: Annotated[int, Query(ge=1)] = 1,
     shows: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[CardListingResponse]:
-    result = await card_listing_cases.get_multi(
+    result = await get_multi_listings(
         db,
         cache,
         page=page,
@@ -69,7 +69,7 @@ async def read_card_listing(
     cache: Annotated[Cache, Depends(get_cache)],
     card_listing_id: int,
 ) -> CardListingResponse:
-    result = await card_listing_cases.get_one(db, cache, card_listing_id)
+    result = await get_one_listing(db, cache, card_listing_id)
 
     match result:
         case Ok(listing):

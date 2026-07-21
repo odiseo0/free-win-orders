@@ -49,6 +49,7 @@ async def get_one(
         response,
         ttl_seconds=CARD_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
 
 
@@ -78,6 +79,7 @@ async def get_multi(
         response,
         ttl_seconds=CARD_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
 
 

@@ -3,7 +3,7 @@ from typing import Annotated, assert_never
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.cards.application import card_cases
+from src.api.cards.application import create, get_multi, get_one, remove, update
 from src.api.cards.domain import (
     CardCreate,
     CardNotFound,
@@ -24,7 +24,7 @@ async def read_cards(
     page: Annotated[int, Query(ge=1)] = 1,
     shows: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[CardResponse]:
-    result = await card_cases.get_multi(db, cache, page=page, shows=shows)
+    result = await get_multi(db, cache, page=page, shows=shows)
 
     match result:
         case Ok(cards):
@@ -39,7 +39,7 @@ async def read_card(
     cache: Annotated[Cache, Depends(get_cache)],
     card_id: int,
 ) -> CardResponse:
-    result = await card_cases.get_one(db, cache, card_id)
+    result = await get_one(db, cache, card_id)
 
     match result:
         case Ok(card):
@@ -59,7 +59,7 @@ async def create_card(
     cache: Annotated[Cache, Depends(get_cache)],
     card_in: CardCreate,
 ) -> CardResponse:
-    result = await card_cases.create(db, cache, card_in)
+    result = await create(db, cache, card_in)
 
     match result:
         case Ok(card):
@@ -75,7 +75,7 @@ async def update_card(
     card_id: int,
     card_in: CardUpdate,
 ) -> CardResponse:
-    result = await card_cases.update(db, cache, card_id, card_in)
+    result = await update(db, cache, card_id, card_in)
 
     match result:
         case Ok(card):
@@ -95,7 +95,7 @@ async def delete_card(
     cache: Annotated[Cache, Depends(get_cache)],
     card_id: int,
 ) -> Response:
-    result = await card_cases.remove(db, cache, card_id)
+    result = await remove(db, cache, card_id)
 
     match result:
         case Ok():

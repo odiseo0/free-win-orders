@@ -74,6 +74,7 @@ async def get_one(
         response,
         ttl_seconds=CARD_LISTING_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
 
 
@@ -103,6 +104,7 @@ async def get_multi(
         response,
         ttl_seconds=CARD_LISTING_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
 
 
@@ -136,4 +138,5 @@ async def search(
         response,
         ttl_seconds=CARD_LISTING_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
