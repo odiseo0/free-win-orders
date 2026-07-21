@@ -96,6 +96,14 @@ Este repositorio es exclusivamente backend. Un frontend podrá desarrollarse por
 
 Mantén I/O asíncrono de extremo a extremo en rutas que accedan a red o base de datos. No ocultes operaciones bloqueantes dentro de funciones `async`.
 
+### Manejo de errores
+
+Los errores recuperables forman parte del flujo y se representan mediante `Result[T, E]`, `Ok[T]` y `Err[E]` desde `src/core/result.py`. Define `E` como uno o varios tipos de error concretos en el dominio propietario; no uses strings, `Any` ni `Exception` como error recuperable.
+
+Los casos de uso devuelven `Result` y la infraestructura resuelve todas sus variantes mediante pattern matching. Usa `assert_never` para mantener manejo exhaustivo y `Never` cuando una operación no tenga actualmente una variante recuperable. Los routers nunca devuelven un `Result` directamente.
+
+Reserva excepciones para fallos inesperados, invariantes rotas o errores de infraestructura que la operación no pueda recuperar. No captures `Exception` para convertir bugs desconocidos en un `Err` genérico.
+
 ## Forma de trabajar
 
 Antes de editar:
@@ -110,6 +118,7 @@ Durante la implementación:
 - conserva compatibilidad salvo que se solicite lo contrario;
 - usa nombres de dominio claros; los comentarios deben explicar decisiones, no repetir el código;
 - añade tipos a interfaces y funciones nuevas;
+- maneja exhaustivamente cada `Result` y añade pruebas para sus variantes `Err`;
 - no añadas dependencias sin una justificación concreta;
 - no incluyas secretos ni valores locales en el repositorio;
 - para cambios de esquema, usa migraciones Alembic cuando esa infraestructura exista; no dependas de creación implícita de tablas en producción.

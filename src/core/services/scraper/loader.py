@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol, Sequence
 
-from sqlalchemy import BigInteger, UniqueConstraint
+from sqlalchemy import BigInteger, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
@@ -23,8 +23,10 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
         autoincrement=True,
         primary_key=True,
     )
-    name: Mapped[str]
-    set: Mapped[str]
+    card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("cards.id"))
+    ygo_id: Mapped[int] = mapped_column(BigInteger)
+    ygo_set: Mapped[str]
+    name: Mapped[str] = mapped_column(String(255))
     code: Mapped[str]
     price: Mapped[Decimal]
     rarity: Mapped[str]
