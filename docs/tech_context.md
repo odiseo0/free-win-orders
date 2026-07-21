@@ -60,6 +60,7 @@ Este documento no cubre:
 | `SQLAlchemy` | ORM, consultas y persistencia async | `src/core/db/`, repositories |
 | `asyncpg` | Driver PostgreSQL asíncrono | `src/core/db/session.py` |
 | `httptools` | Parser HTTP de alto rendimiento para el servidor ASGI | runtime de FastAPI/Uvicorn |
+| `valkey` | Cliente oficial asíncrono para el caché distribuido | `src/core/services/cache/valkey.py` |
 
 `src/core/result.py` implementa `Result[T, E]`, `Ok[T]` y `Err[E]` con dataclasses y un type alias de Python 3.13. No requiere una dependencia externa.
 
@@ -168,8 +169,9 @@ La dirección de dependencias y responsabilidades se define en `docs/conventions
 La configuración usa `BaseSettings` y `SettingsConfigDict` de pydantic-settings. Ambos módulos leen `.env` y omiten claves adicionales.
 
 - `src/settings/api_settings.py` define `APISettings` con prefijo `API_`.
+- `src/settings/cache_settings.py` define `CacheSettings` con prefijo `CACHE_`.
 - `src/settings/db_settings.py` define `DBSettings` para PostgreSQL.
-- `src/settings/__init__.py` exporta `api_settings` y `db_settings`.
+- `src/settings/__init__.py` exporta los tres grupos de configuración.
 
 ### 7.2 Variables de base de datos declaradas
 
@@ -356,10 +358,15 @@ La búsqueda interactiva responde y almacena el resultado en caché, pero no eje
 `src/core/services/cache/` contiene:
 
 - `Cache`: contrato asíncrono independiente del proveedor;
-- `InMemoryCache`: implementación temporal con TTL;
+- `InMemoryCache`: implementación local con TTL;
+- `ValkeyCache`: adaptador asíncrono de `valkey-py`;
 - `get_cache`: dependencia de FastAPI que selecciona la implementación activa.
 
-El proveedor actual es local al proceso. Redis o Valkey podrán reemplazarlo implementando el mismo protocolo y cambiando la dependencia central. No existe todavía una dependencia ni configuración de conexión para un proveedor distribuido.
+`CACHE_BACKEND` selecciona `memory` o `valkey`. El proveedor Valkey se configura con `CACHE_URL`, namespace de claves y timeouts de conexión. La URL se representa mediante `SecretStr` para evitar que credenciales futuras aparezcan accidentalmente en representaciones de settings.
+
+El lifecycle de FastAPI ejecuta `PING` al iniciar cuando Valkey está seleccionado y cierra explícitamente el pool con `aclose()` al detener la aplicación. Un fallo de conexión impide el arranque, en vez de servir una aplicación configurada con un caché inaccesible.
+
+La invalidación por prefijo usa `SCAN` y elimina claves en lotes de 100; no ejecuta `KEYS` sobre el keyspace. Todas las claves reciben el namespace configurado, `free-win:` por defecto.
 
 Las respuestas de lectura de Cartas y Publicaciones usan un TTL actual de 300 segundos. Las mutaciones de Carta invalidan las claves de listas y actualizan o eliminan su clave individual.
 
@@ -390,6 +397,7 @@ Cobertura actual:
 - transformación del scraper;
 - normalización y carga mediante store falso;
 - caché en memoria;
+- adaptador Valkey mediante un cliente falso, sin red;
 - fallback de búsqueda de publicaciones;
 - error tipado al consultar una Carta inexistente.
 

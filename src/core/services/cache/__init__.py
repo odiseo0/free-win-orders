@@ -1,5 +1,14 @@
 from .base import Cache
-from .deps import get_cache
+from .deps import close_cache, create_cache, get_cache
 from .memory import InMemoryCache
+from .valkey import AsyncValkeyClient, ValkeyCache
 
-__all__ = ["Cache", "InMemoryCache", "get_cache"]
+__all__ = [
+    "AsyncValkeyClient",
+    "Cache",
+    "InMemoryCache",
+    "ValkeyCache",
+    "close_cache",
+    "create_cache",
+    "get_cache",
+]

@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:be24c625759a96475c6661e41d6688f74dad3b9499b5ea476607822454554760"
+content_hash = "sha256:0da80edcaecd7e37baef140d20c1b6b4974ef3c0f34115a05dba68080647a415"
 
 [[package]]
 name = "annotated-doc"
@@ -932,6 +932,17 @@ files = [
     {file = "uvloop-0.22.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:bc5ef13bbc10b5335792360623cc378d52d7e62c2de64660616478c32cd0598e"},
     {file = "uvloop-0.22.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:1f38ec5e3f18c8a10ded09742f7fb8de0108796eb673f30ce7762ce1b8550cad"},
     {file = "uvloop-0.22.1.tar.gz", hash = "sha256:6c84bae345b9147082b17371e3dd5d42775bddce91f885499017f4607fdaf39f"},
+]
+
+[[package]]
+name = "valkey"
+version = "6.1.1"
+requires_python = ">=3.9"
+summary = "Python client for Valkey forked from redis-py"
+groups = ["default"]
+files = [
+    {file = "valkey-6.1.1-py3-none-any.whl", hash = "sha256:e2691541c6e1503b53c714ad9a35551ac9b7c0bbac93865f063dbc859a46de92"},
+    {file = "valkey-6.1.1.tar.gz", hash = "sha256:5880792990c6c2b5eb604a5ed5f98f300880b6dd92d123819b66ed54bb259731"},
 ]
 
 [[package]]

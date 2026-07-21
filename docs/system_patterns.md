@@ -645,10 +645,10 @@ cards application
        ↓ depends on
 Cache protocol
        ↑ implemented by
-InMemoryCache / futuro Redis o Valkey
+InMemoryCache / ValkeyCache
 ```
 
-`InMemoryCache` es el proveedor actual para desarrollo. Admite TTL e invalidación por prefijo, pero su contenido pertenece a un único proceso y se pierde al reiniciar.
+`InMemoryCache` es el proveedor predeterminado para desarrollo. `ValkeyCache` implementa el mismo puerto mediante el cliente asíncrono oficial y se activa con `CACHE_BACKEND=valkey`.
 
 Las lecturas de Cartas y Publicaciones almacenan respuestas serializadas durante cinco minutos. Las mutaciones de Carta actualizan la clave individual e invalidan las listas afectadas para no servir representaciones obsoletas.
 
@@ -657,9 +657,11 @@ Las lecturas de Cartas y Publicaciones almacenan respuestas serializadas durante
 - las claves incluyen recurso, operación y parámetros normalizados;
 - un valor vacío también se almacena para evitar repetir búsquedas externas sin resultados;
 - los casos de uso trabajan con schemas de respuesta, no con objetos ORM guardados en memoria;
-- cambiar a Redis o Valkey requiere sustituir el proveedor, no modificar los casos de uso.
+- cambiar el proveedor no modifica los casos de uso;
+- Valkey añade un namespace configurable a todas las claves;
+- el lifecycle verifica la conexión al arrancar y cierra el pool al detenerse.
 
-**Restricción**: `delete_prefix` deberá implementarse de forma acotada en el adaptador distribuido; no debe ejecutar una operación bloqueante sobre todo el keyspace.
+La invalidación distribuida usa `SCAN` y borrado en lotes. No usa `KEYS`, porque recorrer todo el keyspace de forma bloqueante afectaría otras solicitudes.
 
 ## 15) Separación de I/O y CPU
 
@@ -798,9 +800,9 @@ Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan
 - **Fecha**: 2026-07-21.
 - **Contexto**: buscar una publicación no debe repetir scraping cuando el dato ya está disponible localmente.
 - **Decisión**: resolver búsquedas mediante cache-aside en el orden caché → PostgreSQL → scraper y depender de un protocolo de caché neutral al proveedor.
-- **Impacto**: el proveedor actual puede reemplazarse por Redis o Valkey sin cambiar los casos de uso; los resultados externos, incluidos los vacíos, se reutilizan durante el TTL.
+- **Impacto**: `InMemoryCache` y `ValkeyCache` pueden alternarse sin cambiar los casos de uso; los resultados externos, incluidos los vacíos, se reutilizan durante el TTL.
 - **Evidencia**: `src/api/cards/application/card_listing_cases.py`, `src/core/services/cache/`, `src/core/services/scraper/search.py`.
-- **Revisión**: reevaluar TTL, claves e invalidación cuando exista un proveedor distribuido y se conozca el patrón real de uso.
+- **Revisión**: reevaluar TTL, claves e invalidación cuando se conozca el patrón real de uso de Valkey.
 
 ## 20) Referencias
 

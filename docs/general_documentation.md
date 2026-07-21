@@ -139,7 +139,7 @@ También están pendientes de definición o finalización:
 - permisos administrativos y catálogo de roles;
 - representación de resultados parciales por carta;
 - persistencia coordinada de resultados obtenidos por búsqueda;
-- proveedor distribuido Redis o Valkey para el caché;
+- entorno Valkey disponible para validar la integración distribuida;
 - migraciones Alembic del esquema actual;
 - contrato uniforme de errores HTTP.
 

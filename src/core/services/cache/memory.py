@@ -12,6 +12,9 @@ class InMemoryCache:
     def __init__(self) -> None:
         self._entries: dict[str, _CacheEntry] = {}
 
+    async def start(self) -> None:
+        pass
+
     async def get(self, key: str) -> str | None:
         entry = self._entries.get(key)
 
@@ -46,3 +49,6 @@ class InMemoryCache:
 
         for key in matching_keys:
             del self._entries[key]
+
+    async def close(self) -> None:
+        pass

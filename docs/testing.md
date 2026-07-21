@@ -35,6 +35,7 @@ La suite actual contiene:
 - `tests/test_scraper_transformers.py`: comprueba la transformación de una página HTML local en una publicación;
 - `tests/test_scraper_loader.py`: comprueba la normalización previa a la carga y el comportamiento de lotes vacíos.
 - `tests/test_cache.py`: comprueba la invalidación por prefijo del caché en memoria;
+- `tests/test_valkey_cache.py`: comprueba namespace, TTL, lectura, invalidación por lotes y cierre usando un cliente falso;
 - `tests/test_card_listing_search.py`: comprueba el fallback base de datos → scraper y la reutilización del resultado cacheado;
 - `tests/test_card_cases.py`: comprueba el error recuperable al consultar una Carta inexistente;
 - `tests/test_result.py`: comprueba las variantes inmutables del resultado tipado.
@@ -303,7 +304,7 @@ Comprueba por separado:
 - expiración e invalidación de claves;
 - que los tests nunca contacten Redis, Valkey ni el sitio externo sin una integración explícita.
 
-Usa `InMemoryCache` o un fake del protocolo `Cache` en pruebas de aplicación. Las pruebas de un futuro adaptador Redis o Valkey deben ejecutarse contra una instancia desechable y no reemplazan las pruebas del orden de resolución del caso de uso.
+Usa `InMemoryCache` o un fake del protocolo `Cache` en pruebas de aplicación. Las pruebas unitarias de `ValkeyCache` usan un cliente falso y nunca abren sockets. Una futura prueba de integración deberá usar una instancia Valkey desechable y no reemplaza las pruebas del orden de resolución del caso de uso.
 
 ## 7) Fixtures, fakes y datos
 
