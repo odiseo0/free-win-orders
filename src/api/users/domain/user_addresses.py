@@ -21,6 +21,8 @@ class UserAddressCreate(UserAddress):
     address: str
     zip_code: str
 
+    model_config = {**BaseModel.model_config, "extra": "forbid"}
+
 
 class UserAddressUpdate(UserAddress):
     pass

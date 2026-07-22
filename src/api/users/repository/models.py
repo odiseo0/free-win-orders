@@ -1,29 +1,37 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String, text
+from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
 from src.core.db import Base, Date
 
+if TYPE_CHECKING:
+    from src.api.roles.repository import Role
+
 
 class UserRole(MappedAsDataclass, Base, Date, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger, init=False, autoincrement=True, primary_key=True
     )
-    role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("roles.id"))
+    role_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("roles.id", ondelete="CASCADE"), unique=True
+    )
 
     users: Mapped["list[User]"] = relationship(
-        "src.api.users.domain.repositories.models.User",
+        "User",
         back_populates="role",
+        init=False,
     )
-    role: Mapped["UserRole"] = relationship(
-        "src.api.users.domain.repositories.models.UserRole",
-        back_populates="users",
+    role: Mapped["Role"] = relationship(
+        "Role",
+        back_populates="user_role",
         innerjoin=True,
         uselist=False,
         lazy="joined",
+        init=False,
     )
     role_name: AssociationProxy[str] = association_proxy("role", "name")
 
@@ -41,6 +49,7 @@ class UserAddress(MappedAsDataclass, Base, Date, kw_only=True):
     address: Mapped[str]
     address_2: Mapped[str | None]
     zip_code: Mapped[str]
+    user: Mapped["User"] = relationship("User", back_populates="addresses", init=False)
 
 
 class User(MappedAsDataclass, Base, Date, kw_only=True):
@@ -51,26 +60,25 @@ class User(MappedAsDataclass, Base, Date, kw_only=True):
         primary_key=True,
     )
     external_id: Mapped[str | None]
-    role_id: Mapped[int] = mapped_column(
-        ForeignKey("user_roles.id"), default=1, server_default=text("1")
-    )
+    role_id: Mapped[int] = mapped_column(ForeignKey("user_roles.id"))
     first_name: Mapped[str] = mapped_column(String(255))
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     alias: Mapped[str | None]
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
-    password: Mapped[str | None] = mapped_column(String(320))
+    password: Mapped[str] = mapped_column(String(320))
     phone_number: Mapped[str | None] = mapped_column(String(20))
     phone_code: Mapped[str | None]
     id_number: Mapped[str | None]
 
     role: Mapped["UserRole"] = relationship(
-        "src.api.users.domain.repositories.models.UserRole",
+        "UserRole",
         back_populates="users",
         innerjoin=True,
         uselist=False,
         lazy="joined",
+        init=False,
     )
-    role_name: AssociationProxy[str] = association_proxy("role", "name")
+    role_name: AssociationProxy[str] = association_proxy("role", "role_name")
     addresses: Mapped[list[UserAddress]] = relationship(
-        "src.api.users.repository.models.UserAddress", back_populates="users"
+        "UserAddress", back_populates="user", init=False
     )

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Never
 
 from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdate
+from src.api.roles.domain import SystemRoleIsImmutable
 from src.api.users.repository import UserRole
 from src.api.users.repository import dao_user_roles as dao
 from src.core import Err, Ok, Result
@@ -54,22 +55,28 @@ async def update(
     db: AsyncSession,
     user_role_id: int,
     obj_in: UserRoleUpdate,
-) -> Result[UserRole, UserRoleNotFound]:
+) -> Result[UserRole, UserRoleNotFound | SystemRoleIsImmutable]:
     user_role = await dao.get(db, user_role_id)
 
     if user_role is Empty:
         return Err(UserRoleNotFound(user_role_id))
+    if user_role.role.is_system:
+        return Err(SystemRoleIsImmutable(user_role.role_id))
 
     updated_user_role = await dao.update(db, user_role_id, obj_in)
 
     return Ok(updated_user_role)
 
 
-async def remove(db: AsyncSession, user_role_id: int) -> Result[None, UserRoleNotFound]:
+async def remove(
+    db: AsyncSession, user_role_id: int
+) -> Result[None, UserRoleNotFound | SystemRoleIsImmutable]:
     user_role = await dao.get(db, user_role_id)
 
     if user_role is Empty:
         return Err(UserRoleNotFound(user_role_id))
+    if user_role.role.is_system:
+        return Err(SystemRoleIsImmutable(user_role.role_id))
 
     await dao.delete(db, db_object=user_role)
 

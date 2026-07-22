@@ -6,4 +6,4 @@ from .user_addresses import (
     UserAddressUpdate,
 )
 from .user_roles import UserRole, UserRoleCreate, UserRoleResponse, UserRoleUpdate
-from .users import User, UserCreate, UserResponse, UserUpdate
+from .users import User, UserCreate, UserResponse, UserRoleAssignment, UserUpdate

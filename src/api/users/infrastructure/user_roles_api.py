@@ -18,13 +18,18 @@ from src.api.users.domain import (
 )
 from src.core import Err, Ok
 from src.core.db import get_db
+from src.api.roles.domain import Actor, PermissionCode, SystemRoleIsImmutable
+from src.api.roles.infrastructure.auth import require_actor
 
-router = APIRouter(tags=["user-roles"])
+router = APIRouter(tags=["user-roles"], deprecated=True)
 
 
 @router.get("/")
 async def read_user_roles(
-    db: Annotated[AsyncSession, Depends(get_db)], page: int = 0, shows: int = 100
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.USERS_ASSIGN_ROLE))],
+    page: int = 0,
+    shows: int = 100,
 ) -> list[UserRoleResponse]:
     result = await get_multi(db, page=page, shows=shows)
 
@@ -37,7 +42,9 @@ async def read_user_roles(
 
 @router.get("/{user_role_id}")
 async def read_user_role(
-    db: Annotated[AsyncSession, Depends(get_db)], user_role_id: int
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.USERS_ASSIGN_ROLE))],
+    user_role_id: int,
 ) -> UserRoleResponse:
     result = await get_one(db, user_role_id)
 
@@ -55,7 +62,9 @@ async def read_user_role(
 
 @router.post("/")
 async def create_user_role(
-    db: Annotated[AsyncSession, Depends(get_db)], user_role_in: UserRoleCreate
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.USERS_ASSIGN_ROLE))],
+    user_role_in: UserRoleCreate,
 ) -> UserRoleResponse:
     result = await create(db, obj_in=user_role_in)
 
@@ -69,6 +78,7 @@ async def create_user_role(
 @router.patch("/{user_role_id}")
 async def update_user_role(
     db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.USERS_ASSIGN_ROLE))],
     user_role_id: int,
     user_role_in: UserRoleUpdate,
 ) -> UserRoleResponse:
@@ -82,13 +92,19 @@ async def update_user_role(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="El rol del usuario no existe",
             )
+        case Err(SystemRoleIsImmutable()):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Los roles del sistema son inmutables"
+            )
         case unexpected:
             assert_never(unexpected)
 
 
 @router.delete("/{user_role_id}")
 async def delete_user_role(
-    db: Annotated[AsyncSession, Depends(get_db)], user_role_id: int
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.USERS_ASSIGN_ROLE))],
+    user_role_id: int,
 ) -> str:
     result = await remove(db, user_role_id=user_role_id)
 
@@ -99,6 +115,10 @@ async def delete_user_role(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="El rol del usuario no existe",
+            )
+        case Err(SystemRoleIsImmutable()):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Los roles del sistema son inmutables"
             )
         case unexpected:
             assert_never(unexpected)

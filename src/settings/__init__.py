@@ -4,8 +4,9 @@ if TYPE_CHECKING:
     from src.settings.api_settings import api_settings
     from src.settings.cache_settings import cache_settings
     from src.settings.db_settings import db_settings
+    from src.settings.auth_settings import auth_settings
 
-__all__ = ["api_settings", "cache_settings", "db_settings"]
+__all__ = ["api_settings", "auth_settings", "cache_settings", "db_settings"]
 
 
 def __getattr__(name: str) -> Any:
@@ -23,5 +24,10 @@ def __getattr__(name: str) -> Any:
         from src.settings.db_settings import db_settings
 
         return db_settings
+
+    if name == "auth_settings":
+        from src.settings.auth_settings import auth_settings
+
+        return auth_settings
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

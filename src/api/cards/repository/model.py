@@ -49,5 +49,5 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
     stock: Mapped[int] = mapped_column(default=0)
 
     card: Mapped["Card"] = relationship(
-        "src.api.cards.repository.models.Card", innerjoin=True, lazy="joined"
+        "Card", innerjoin=True, lazy="joined", init=False
     )

@@ -346,6 +346,16 @@ dao_user_addresses = UserAddressDAO(UserAddress)
 
 **Patrón actual**: añade métodos al DAO específico solo para consultas o persistencia propias del recurso.
 
+El componente Roles muestra el límite esperado entre el CRUD genérico y las operaciones específicas:
+
+- `RoleDAO` reutiliza `get`, `get_by`, `get_multi`, `create`, `update` y `delete`, y añade solamente el bootstrap de roles de sistema;
+- `PermissionDAO` reutiliza el listado genérico y añade la consulta por códigos del catálogo controlado;
+- `RolePermissionDAO` reemplaza asociaciones en una sola transacción;
+- `AuthorizationDAO` resuelve el actor y sus permisos mediante joins;
+- los casos de uso coordinan esos resultados y producen `Result`, pero no importan constructores SQLAlchemy ni ejecutan queries.
+
+Cuando una operación abarca varios DAOs, el caso de uso puede ser propietario de la transacción y solicitar escrituras con `commit=False`. `DAOIntegrityError` permite traducir conflictos de restricciones concretos sin convertir otros fallos de persistencia en errores recuperables. Esto no autoriza a construir SQL dentro de aplicación: `commit` y `rollback` coordinan la unidad de trabajo, mientras las consultas permanecen en `repository`.
+
 ### 8.2 Conversión de schemas a datos
 
 En creación:
@@ -425,7 +435,7 @@ class User(MappedAsDataclass, Base, Date, kw_only=True):
 
 El DAO también acepta estrategias SQLAlchemy mediante `options`, como `joinedload` o `selectinload`.
 
-**Patrón en evolución**: las relaciones del componente `users` todavía contienen referencias pendientes y lados de `back_populates` incompletos. No deben usarse como plantilla hasta definir correctamente `Role`, `UserRole`, `UserAddress` y sus cardinalidades.
+**Patrón actual**: `User` pertenece a un `UserRole`, cada `UserRole` corresponde de forma única a un `Role` y `Role` obtiene sus permisos mediante `RolePermission`. `UserAddress` pertenece a un único `User`. Conserva el puente solamente mientras sea necesario para compatibilidad; el contrato administrativo recibe IDs reales de `Role`.
 
 ## 10) Ausencia explícita mediante sentinel
 
@@ -741,9 +751,9 @@ Los endpoints existentes de Usuarios devuelven el string `"Eliminado"`, mientras
 
 ### 18.2 Relaciones de Usuarios y Roles
 
-**Estado**: incompleto.
+**Estado**: compatibilidad temporal.
 
-Las relaciones contienen rutas antiguas o inexistentes, falta el lado de Direcciones y el modelo `Role` no está definido en el componente actual. No copies estas cadenas ni cardinalidades a otros modelos.
+Las relaciones están completas, pero `UserRole` agrega una indirección que no debe extenderse a componentes nuevos. Roles y Permisos pertenecen a `src/api/roles/`; Usuarios conserva únicamente el puente y la asignación.
 
 ### 18.3 Contratos de listas
 
@@ -803,6 +813,29 @@ Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan
 - **Impacto**: `InMemoryCache` y `ValkeyCache` pueden alternarse sin cambiar los casos de uso; los resultados externos, incluidos los vacíos, se reutilizan durante el TTL.
 - **Evidencia**: `src/api/cards/application/card_listing_cases.py`, `src/core/services/cache/`, `src/core/services/scraper/search.py`.
 - **Revisión**: reevaluar TTL, claves e invalidación cuando se conozca el patrón real de uso de Valkey.
+
+### DEC-20260722-explicit-permission-policies
+
+- **Fecha**: 2026-07-22.
+- **Contexto**: la autorización debe expresar tanto capacidades administrativas como acceso a recursos propios sin acoplar el dominio a HTTP.
+- **Decisión**: representar al usuario autenticado con `Actor` inmutable, usar `PermissionCode` como catálogo cerrado y resolver reglas mediante `require_permission` o `require_owner_or_permission`.
+- **Impacto**: las pólizas puras devuelven `ALLOW`, `FORBIDDEN` o `HIDDEN`; solamente infraestructura traduce esas decisiones a `200`, `403` o `404`. La ausencia de identidad se resuelve antes con `401`.
+- **Evidencia**: `src/api/roles/domain/permissions.py`, `src/api/roles/domain/policies.py`, `src/api/roles/infrastructure/auth.py`.
+- **Revisión**: ampliar el catálogo cuando una regla funcional concreta lo requiera, sin aceptar códigos arbitrarios desde la API.
+
+El patrón de propiedad siempre necesita ambos permisos, aunque un rol pueda contener solamente uno:
+
+```python
+decision = require_owner_or_permission(
+    actor,
+    owner_id,
+    own_permission=PermissionCode.ADDRESSES_UPDATE_SELF,
+    any_permission=PermissionCode.ADDRESSES_UPDATE_ANY,
+)
+enforce_decision(decision)
+```
+
+Para colecciones, filtra por `actor.user_id` cuando el actor tenga el permiso propio pero no el general. Nunca cargues todos los registros y filtres en memoria.
 
 ## 20) Referencias
 

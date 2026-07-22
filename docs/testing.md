@@ -429,6 +429,19 @@ Flujo recomendado:
 - rollback y conflictos;
 - migración hacia adelante y reversión cuando sea posible.
 
+### 12.4 Autorización, Roles o Permisos
+
+- matriz de permisos de `Admin` y `User`;
+- decisiones puras de permiso general y propiedad;
+- `401` sin identidad, `403` sin permiso y ocultación `404` para recursos ajenos;
+- filtrado de colecciones por propietario;
+- rechazo de `roleId` durante el registro y ausencia de contraseña en respuestas;
+- inmutabilidad de `Admin` y `User`;
+- CRUD y reemplazo completo de permisos para roles personalizados;
+- bootstrap idempotente y promoción administrativa;
+- `dependency_overrides` para sustituir `get_current_user` en pruebas HTTP.
+- fakes de DAO para demostrar que los casos de uso coordinan reglas y transacciones sin ejecutar consultas directamente.
+
 ### 12.4 Scraper
 
 - etapa específica modificada;

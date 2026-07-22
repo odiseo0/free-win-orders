@@ -115,6 +115,8 @@ pdm run fastapi dev src/application.py
 | Usuarios | `/users` |
 | Direcciones de usuario | `/user-addresses` |
 | Roles de usuario | `/user-roles` |
+| Roles | `/roles` |
+| Permisos | `/permissions` |
 | Cartas | `/cards` |
 | Publicaciones de cartas | `/card-listings` |
 
@@ -204,6 +206,15 @@ Esos atributos no están definidos actualmente en `DBSettings`.
 
 `APISettings` no declara todavía campos específicos. Es el punto previsto para opciones como CORS, entorno, exposición de OpenAPI o metadata configurable cuando sean necesarias.
 
+### 7.5 Identidad local temporal
+
+`src/settings/auth_settings.py` define dos variables:
+
+- `AUTH_MODE`, cuyo valor por defecto es `disabled` y cuyo único modo activo actual es `local`;
+- `AUTH_LOCAL_USER_ID`, que identifica un usuario persistido cuando el modo es `local`.
+
+Los endpoints protegidos responden `401` si falta cualquiera de ambos valores o el usuario no existe. Esta configuración facilita desarrollo y pruebas, pero no sustituye autenticación, hashing, sesiones ni tokens.
+
 ## 8) Persistencia
 
 ### 8.1 Engine y sesiones
@@ -248,7 +259,7 @@ El engine utiliza `asyncpg` y configura el servidor con zona horaria `America/Ca
 
 ### 8.5 Migraciones
 
-Alembic forma parte del stack previsto, pero el repositorio no contiene todavía configuración ni revisiones de migración.
+Alembic está configurado en `migrations/`. La revisión `20260722_01` incorpora Roles y Permisos sobre el esquema previo; todavía hace falta consolidar una historia base reproducible para una base completamente vacía.
 
 **Restricción actual**: el esquema no debe considerarse gestionado para producción hasta que exista una historia de migraciones reproducible. La creación implícita de tablas no sustituye migraciones versionadas.
 
@@ -264,7 +275,9 @@ Alembic forma parte del stack previsto, pero el repositorio no contiene todavía
 
 El componente usa schemas Pydantic separados para base, creación, actualización y respuesta, y DAOs específicos basados en el DAO genérico.
 
-**Restricción actual**: algunas relaciones y el catálogo externo de roles todavía están incompletos o apuntan a referencias pendientes. La definición de permisos no debe inferirse solamente desde estos modelos.
+`UserRole` conserva temporalmente la compatibilidad entre `User` y el nuevo `Role`. La restricción única sobre `UserRole.role_id` garantiza un solo puente por rol. `RolePermission` implementa la relación muchos-a-muchos entre roles y el catálogo persistente de permisos.
+
+La persistencia del componente se concentra en `src/api/roles/repository/dao.py`. Los casos de uso no construyen consultas: utilizan `RoleDAO`, `PermissionDAO`, `RolePermissionDAO` y los DAOs del puente de Usuarios. La dependencia de identidad utiliza `AuthorizationDAO` para cargar `User → UserRole → Role → Permission`.
 
 ### 9.2 Cartas y publicaciones
 
@@ -428,6 +441,16 @@ pdm run pytest
 
 El último comando utiliza la dependencia pytest declarada en `pyproject.toml`.
 
+Después de aplicar el esquema, el catálogo se inicializa explícitamente y fuera del arranque HTTP:
+
+```bash
+pdm run alembic upgrade head
+pdm run python -m src.api.roles.bootstrap
+pdm run python -m src.api.roles.bootstrap --admin-user-id 123
+```
+
+El bootstrap es idempotente. La última variante asigna `Admin` a un usuario existente y revierte sus cambios si el ID no existe.
+
 ### 15.2 Artefactos de despliegue
 
 El repositorio no contiene actualmente:
@@ -435,7 +458,6 @@ El repositorio no contiene actualmente:
 - Dockerfile;
 - compose file;
 - manifiestos de plataforma;
-- scripts de migración;
 - configuración de CI;
 - definición de health check dedicada.
 
@@ -463,9 +485,9 @@ La futura trazabilidad del dominio no debe confundirse con observabilidad técni
 Riesgos que deben resolverse antes de exposición pública:
 
 - CORS permisivo;
-- autenticación y autorización todavía no definidas;
-- almacenamiento y respuesta de contraseñas pendientes de endurecimiento;
-- roles y permisos incompletos;
+- autenticación real, hashing de contraseñas y tokens todavía no definidos;
+- la identidad `AUTH_MODE=local` es exclusivamente temporal y está deshabilitada por defecto;
+- el almacenamiento de contraseñas sigue pendiente de endurecimiento, aunque ya no se expone en respuestas;
 - protección de datos de contacto y entrega;
 - sanitización consistente de errores y logs.
 
@@ -477,10 +499,9 @@ Los secretos deben permanecer en variables de entorno y nunca registrarse ni inc
 | --- | --- | --- |
 | Dependencias directas y de desarrollo incompletas | Instalación no completamente reproducible | `docs/tech_context.md` |
 | `DBSettings` no expone atributos usados por la sesión | Arranque de persistencia incompleto | `docs/tech_context.md` |
-| Sin migraciones Alembic | Esquema no versionado | `docs/tech_context.md` |
-| Relaciones de roles incompletas | Modelo de permisos indefinido | `docs/general_documentation.md` |
+| Historia Alembic previa incompleta | Una base vacía aún necesita una revisión base | `docs/tech_context.md` |
 | Contrato de errores inconsistente | API difícil de consumir de forma uniforme | `docs/system_patterns.md` |
-| Sin auth ni autorización | API no preparada para exposición pública | documento de seguridad futuro |
+| Solo identidad local temporal | API no preparada todavía para exposición pública | documento de seguridad futuro |
 | Sin lifecycle del executor | Recursos multiproceso sin cierre explícito | `docs/system_patterns.md` |
 | Sin despliegue ni CI definidos | Operación no reproducible | documento de despliegue futuro |
 
@@ -514,6 +535,15 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - **Impacto**: comparte código y despliegue con la API, pero puede extraerse cuando exista una necesidad real.
 - **Evidencia**: `src/core/services/scraper/`.
 - **Revisión**: reevaluar si requiere despliegue, escalado o planificación independiente.
+
+### DEC-20260722-local-authorization
+
+- **Fecha**: 2026-07-22.
+- **Contexto**: los límites de acceso deben existir antes de implementar login o JWT.
+- **Decisión**: resolver una identidad local configurable, cargar permisos desde PostgreSQL en cada solicitud y autorizar mediante permisos explícitos y propiedad.
+- **Impacto**: no se sirven privilegios obsoletos desde caché; la dependencia `get_current_user` puede reemplazarse en pruebas y posteriormente por autenticación real.
+- **Evidencia**: `src/settings/auth_settings.py`, `src/api/roles/domain/policies.py`, `src/api/roles/infrastructure/auth.py`.
+- **Revisión**: reemplazar la identidad local al incorporar el componente de autenticación.
 
 ## 19) Referencias
 

@@ -13,6 +13,8 @@ from src.api.cards.domain import (
 from src.core import Err, Ok
 from src.core.db import get_db
 from src.core.services.cache import Cache, get_cache
+from src.api.roles.domain import Actor, PermissionCode
+from src.api.roles.infrastructure.auth import require_actor
 
 router = APIRouter(tags=["cards"])
 
@@ -21,6 +23,7 @@ router = APIRouter(tags=["cards"])
 async def read_cards(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_READ))],
     page: Annotated[int, Query(ge=1)] = 1,
     shows: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[CardResponse]:
@@ -37,6 +40,7 @@ async def read_cards(
 async def read_card(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_READ))],
     card_id: int,
 ) -> CardResponse:
     result = await get_one(db, cache, card_id)
@@ -57,6 +61,7 @@ async def read_card(
 async def create_card(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_CREATE))],
     card_in: CardCreate,
 ) -> CardResponse:
     result = await create(db, cache, card_in)
@@ -72,6 +77,7 @@ async def create_card(
 async def update_card(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_UPDATE))],
     card_id: int,
     card_in: CardUpdate,
 ) -> CardResponse:
@@ -93,6 +99,7 @@ async def update_card(
 async def delete_card(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_DELETE))],
     card_id: int,
 ) -> Response:
     result = await remove(db, cache, card_id)

@@ -72,7 +72,9 @@ Una Dirección de usuario representa un lugar asociado con un Usuario y puede ut
 
 ### 4.5 Rol de usuario
 
-Un Rol de usuario vincula al Usuario con sus permisos o responsabilidades. La definición completa de roles, permisos y transiciones administrativas todavía está pendiente.
+Un `Role` agrupa permisos del catálogo controlado por `PermissionCode`. `Admin` y `User` son roles de sistema inmutables; los administradores pueden crear roles personalizados y reemplazar atómicamente su conjunto de permisos.
+
+`UserRole` es un puente temporal entre `User` y `Role`. Cada `Role` posee un único puente y las nuevas asignaciones se realizan con el ID real del rol mediante `PUT /users/{user_id}/role`. La API `/user-roles` se conserva solamente por compatibilidad y está marcada como obsoleta.
 
 ### 4.6 Carta y publicación
 
@@ -108,7 +110,9 @@ El repositorio contiene actualmente:
 
 - una aplicación FastAPI creada en `src/application.py`;
 - ensamblaje central de routers en `src/api/api.py`;
-- endpoints CRUD para Usuarios, Direcciones de usuario y Roles de usuario;
+- endpoints protegidos para Usuarios y Direcciones de usuario;
+- catálogo de permisos y CRUD de Roles personalizados;
+- autorización por permisos y propiedad con identidad local temporal;
 - endpoints CRUD para Cartas;
 - endpoints de lectura y búsqueda para Publicaciones de cartas;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
@@ -124,10 +128,14 @@ La superficie HTTP registrada actualmente incluye:
 | Usuarios | `/users` | listar, obtener, crear, actualizar y eliminar |
 | Direcciones | `/user-addresses` | listar, obtener, crear, actualizar y eliminar |
 | Roles de usuario | `/user-roles` | listar, obtener, crear, actualizar y eliminar |
+| Roles | `/roles` | CRUD de roles personalizados y asignación de permisos |
+| Permisos | `/permissions` | lectura del catálogo controlado |
 | Cartas | `/cards` | listar, obtener, crear, actualizar y eliminar |
 | Publicaciones | `/card-listings` | listar, obtener y buscar |
 
 La raíz `/` devuelve un mensaje de bienvenida.
+
+Los endpoints protegidos no están disponibles de forma anónima. Durante el desarrollo puede configurarse temporalmente `AUTH_MODE=local` junto con `AUTH_LOCAL_USER_ID`; si falta cualquiera de los valores, responden `401`. El registro `POST /users` permanece público y siempre asigna el rol de sistema `User`.
 
 ### 6.2 Estructura preparada pero incompleta
 
@@ -136,11 +144,11 @@ Los componentes `collections` y `orders` ya existen dentro de `src/api/`, pero s
 También están pendientes de definición o finalización:
 
 - estados y transiciones de Pedidos y Órdenes;
-- permisos administrativos y catálogo de roles;
+- autenticación real, hashing de contraseñas y emisión de tokens;
 - representación de resultados parciales por carta;
 - persistencia coordinada de resultados obtenidos por búsqueda;
 - entorno Valkey disponible para validar la integración distribuida;
-- migraciones Alembic del esquema actual;
+- completar una historia base de Alembic para todo el esquema previo;
 - contrato uniforme de errores HTTP.
 
 ## 7) Arquitectura general

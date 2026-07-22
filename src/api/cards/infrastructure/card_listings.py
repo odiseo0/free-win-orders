@@ -12,6 +12,8 @@ from src.core import Err, Ok
 from src.core.db import get_db
 from src.core.services.cache import Cache, get_cache
 from src.core.services.scraper import CardListingSearch, get_card_listing_search
+from src.api.roles.domain import Actor, PermissionCode
+from src.api.roles.infrastructure.auth import require_actor
 
 router = APIRouter(tags=["card-listings"])
 
@@ -21,6 +23,7 @@ async def search_card_listings(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
     scraper: Annotated[CardListingSearch, Depends(get_card_listing_search)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARD_LISTINGS_READ))],
     query: Annotated[
         str,
         Query(min_length=1, max_length=255, pattern=r".*\S.*"),
@@ -46,6 +49,7 @@ async def search_card_listings(
 async def read_card_listings(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARD_LISTINGS_READ))],
     page: Annotated[int, Query(ge=1)] = 1,
     shows: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> list[CardListingResponse]:
@@ -67,6 +71,7 @@ async def read_card_listings(
 async def read_card_listing(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
+    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARD_LISTINGS_READ))],
     card_listing_id: int,
 ) -> CardListingResponse:
     result = await get_one_listing(db, cache, card_listing_id)
