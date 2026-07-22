@@ -59,7 +59,7 @@ def parse_listings_from_text(soup: BeautifulSoup, card_name: str) -> list[CardLi
     listings: list[CardListing] = []
     full_text = soup.get_text()
 
-    code_pattern = re.compile(r"Card #:\s*([A-Z]{2,4}\d*-[A-Z]{2,3}\d+)")
+    code_pattern = re.compile(r"Card #:\s*([A-Z]{2,4}\d*-(?:[A-Z]{2,3})?\d+)")
     codes = code_pattern.findall(full_text)
 
     for code in codes:
@@ -125,7 +125,7 @@ def extract_listing_from_row(row, card_name: str) -> CardListing | None:
     if "$" not in row_text:
         return None
 
-    code_pattern = re.compile(r"[A-Z]{2,4}\d*-[A-Z]{2,3}\d+")
+    code_pattern = re.compile(r"[A-Z]{2,4}\d*-(?:[A-Z]{2,3})?\d+")
     code_match = code_pattern.search(row_text)
 
     if not code_match:
