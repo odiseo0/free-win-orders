@@ -6,8 +6,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.roles.domain import (
-    PermissionCode,
     USER_PERMISSIONS,
+    PermissionCode,
     UserNotFoundForPromotion,
 )
 from src.api.roles.repository import (
@@ -21,7 +21,6 @@ from src.api.users.repository import dao_user_roles, dao_users
 from src.core import Err, Ok, Result
 from src.core.db import session
 from src.core.utils.utils import Empty
-
 
 SYSTEM_ROLE_DESCRIPTIONS = {
     "Admin": "Acceso completo a la administración de Free Win.",
@@ -37,6 +36,7 @@ async def bootstrap_roles(
     db: AsyncSession, *, admin_user_id: int | None = None
 ) -> Result[None, UserNotFoundForPromotion]:
     permissions_by_code: dict[PermissionCode, Permission] = {}
+
     for code in PermissionCode:
         permission = await dao_permissions.upsert(
             db,
@@ -46,10 +46,9 @@ async def bootstrap_roles(
         permissions_by_code[code] = permission
 
     roles: dict[str, Role] = {}
+
     for name, description in SYSTEM_ROLE_DESCRIPTIONS.items():
-        role = await dao_roles.upsert_system(
-            db, name=name, description=description
-        )
+        role = await dao_roles.upsert_system(db, name=name, description=description)
         roles[name] = role
 
         await dao_user_roles.ensure_for_role(db, role.id)
@@ -68,15 +67,16 @@ async def bootstrap_roles(
 
     if admin_user_id is not None:
         user = await dao_users.get(db, admin_user_id)
+
         if user is Empty:
             await db.rollback()
             return Err(UserNotFoundForPromotion(admin_user_id))
 
-        admin_bridge = await dao_user_roles.get_by_role_id(
-            db, roles["Admin"].id
-        )
+        admin_bridge = await dao_user_roles.get_by_role_id(db, roles["Admin"].id)
+
         if admin_bridge is Empty:
             raise RuntimeError("No se pudo crear el puente del rol Admin")
+
         await dao_users.update(
             db,
             admin_user_id,
@@ -85,6 +85,7 @@ async def bootstrap_roles(
         )
 
     await db.commit()
+
     return Ok(None)
 
 
