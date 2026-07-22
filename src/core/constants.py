@@ -1,3 +1,5 @@
+from pytz import timezone
+
 BASE_URL = "https://www.coolstuffinc.com/p/YuGiOh/"
 BASE_URL_SEARCH = "https://www.coolstuffinc.com/main_search.php"
 SEARCH_RESULTS_PER_PAGE = 50
@@ -12,3 +14,4 @@ USER_AGENT = (
 EXCEL_TEMPLATE_FILENAME = "Template.xlsx"
 EXPORT_PLATFORM_NAME = "CoolStuffInc"
 YGO_API_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php"
+TZ = timezone("America/Caracas")

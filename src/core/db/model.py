@@ -50,8 +50,6 @@ class AwaitAttrs:
 
 
 class Base(AwaitAttrs, DeclarativeBase):
-    """subclasses will be converted to dataclasses"""
-
     metadata = meta
     registry = _registry(type_annotation_map={datetime: DateTime(timezone=True)})
 
@@ -63,8 +61,6 @@ class Base(AwaitAttrs, DeclarativeBase):
 
 @dataclasses.dataclass
 class Date:
-    """Date time mixin."""
-
     date_added: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default_factory=datetime_now,

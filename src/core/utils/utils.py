@@ -4,6 +4,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 
+from src.core.constants import TZ
+
 
 class CardListing(Protocol):
     code: str
@@ -77,7 +79,7 @@ def to_snake(camel: str) -> str:
 
 
 def datetime_now() -> datetime:
-    return datetime.now()
+    return datetime.now(tz=TZ)
 
 
 class Empty:

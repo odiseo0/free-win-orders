@@ -14,7 +14,7 @@ from src.core.utils import deserialize_object, serialize_object
 from src.settings import db_settings
 
 engine = create_async_engine(
-    db_settings.url,
+    db_settings.SQLALCHEMY_DATABASE_URI,
     json_serializer=serialize_object,
     json_deserializer=deserialize_object,
     pool_size=db_settings.pool_size,
