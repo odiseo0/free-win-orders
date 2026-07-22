@@ -10,7 +10,7 @@ from src.core.constants import BASE_URL, REQUEST_TIMEOUT_SECONDS, USER_AGENT
 MAX_SCRAPE_CONCURRENCY = 50
 
 
-async def scrape_cards(cards: list[str]) -> zip[Iterable[str, str]]:
+async def scrape_cards(cards: list[str]) -> Iterable[tuple[str, str | None]]:
     semaphore = asyncio.Semaphore(MAX_SCRAPE_CONCURRENCY)
     tasks: list[asyncio.Task] = []
 
