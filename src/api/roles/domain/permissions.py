@@ -31,6 +31,12 @@ class PermissionCode(StrEnum):
     ROLES_ASSIGN_PERMISSIONS = "roles.assign_permissions"
     PERMISSIONS_READ = "permissions.read"
 
+    ORDER_PERIODS_READ = "order_periods.read"
+    ORDER_PERIODS_READ_DRAFTS = "order_periods.read_drafts"
+    ORDER_PERIODS_CREATE = "order_periods.create"
+    ORDER_PERIODS_UPDATE = "order_periods.update"
+    ORDER_PERIODS_CLOSE = "order_periods.close"
+
 
 USER_PERMISSIONS = frozenset(
     {
@@ -42,5 +48,6 @@ USER_PERMISSIONS = frozenset(
         PermissionCode.ADDRESSES_DELETE_SELF,
         PermissionCode.CARDS_READ,
         PermissionCode.CARD_LISTINGS_READ,
+        PermissionCode.ORDER_PERIODS_READ,
     }
 )

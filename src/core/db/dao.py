@@ -166,8 +166,10 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
 
         if where is not None:
             conditions = []
+
             for k, v in where.items():
                 attr = getattr(self.model, k)
+
                 if isinstance(v, list | tuple):
                     conditions.append(attr.in_(v))
                 else:

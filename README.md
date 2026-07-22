@@ -21,7 +21,7 @@ src/
 ├── api/                 # Componentes y endpoints de la API
 │   ├── cards/
 │   ├── collections/
-│   ├── orders/
+│   ├── order_periods/
 │   └── users/
 ├── core/                # Base de datos, servicios y utilidades compartidas
 └── settings/            # Configuración de la aplicación
