@@ -57,7 +57,7 @@ async def test_get_role_translates_repository_absence(
         ) -> object:
             return Empty
 
-    monkeypatch.setattr(roles_cases, "dao", MissingRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_roles", MissingRoleDAO())
 
     result = await roles_cases.get_one(object(), 42)
 
@@ -102,7 +102,7 @@ async def test_create_role_coordinates_role_and_bridge_daos(
 
     bridge_dao = FakeUserRoleDAO()
     db = FakeDB()
-    monkeypatch.setattr(roles_cases, "dao", FakeRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_roles", FakeRoleDAO())
     monkeypatch.setattr(roles_cases, "dao_user_roles", bridge_dao)
 
     result = await roles_cases.create(db, RoleCreate(name="Judge"))
@@ -124,7 +124,7 @@ async def test_create_role_rolls_back_name_conflicts(
             raise DAOIntegrityError
 
     db = FakeDB()
-    monkeypatch.setattr(roles_cases, "dao", ConflictingRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_roles", ConflictingRoleDAO())
 
     result = await roles_cases.create(db, RoleCreate(name="Judge"))
 
@@ -162,7 +162,7 @@ async def test_delete_assigned_role_stops_before_repository_delete(
             return 1
 
     role_dao = FakeRoleDAO()
-    monkeypatch.setattr(roles_cases, "dao", role_dao)
+    monkeypatch.setattr(roles_cases, "dao_roles", role_dao)
     monkeypatch.setattr(roles_cases, "dao_user_roles", FakeUserRoleDAO())
     monkeypatch.setattr(roles_cases, "dao_users", FakeUserDAO())
 
@@ -200,9 +200,9 @@ async def test_replace_permissions_uses_catalog_and_association_daos(
             self.replaced = True
 
     association_dao = FakeRolePermissionDAO()
-    monkeypatch.setattr(roles_cases, "dao", FakeRoleDAO())
-    monkeypatch.setattr(roles_cases, "permission_dao", FakePermissionDAO())
-    monkeypatch.setattr(roles_cases, "role_permission_dao", association_dao)
+    monkeypatch.setattr(roles_cases, "dao_roles", FakeRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_permissions", FakePermissionDAO())
+    monkeypatch.setattr(roles_cases, "dao_role_permissions", association_dao)
 
     result = await roles_cases.replace_permissions(
         object(), role.id, [PermissionCode.CARDS_READ]

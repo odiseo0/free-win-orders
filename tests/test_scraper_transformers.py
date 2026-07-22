@@ -1,6 +1,4 @@
-import asyncio
-
-from src.core.services.scraper.transformers import transform_card_pages
+from src.core.services.scraper.transformers import parse_card_listings
 
 HTML = """
 <html>
@@ -23,14 +21,7 @@ HTML = """
 
 
 def test_transform_card_pages_returns_card_listings() -> None:
-    listings = asyncio.run(
-        transform_card_pages(
-            [
-                ("Blue-Eyes White Dragon", HTML),
-                ("Dark Magician", None),
-            ]
-        )
-    )
+    listings = parse_card_listings(HTML, "Blue-Eyes White Dragon")
 
     assert len(listings) == 1
 
