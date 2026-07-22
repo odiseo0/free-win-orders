@@ -49,6 +49,18 @@ Un Pedido:
 - no representa una compra individual;
 - no implica que las cartas se compren inmediatamente después de ser solicitadas.
 
+En código y API se representa como `OrderPeriod`; el futuro envío individual se
+representará como `OrderRequest`. Su estado se deriva de la ventana temporal:
+
+- `draft` antes de la apertura;
+- `open` desde la apertura y hasta antes del cierre;
+- `closed` al alcanzar el cierre.
+
+Los administradores pueden modificar libremente nombre y fechas mientras está
+en Borrador. Una vez abierto solo pueden adelantar o extender un cierre que siga
+en el futuro. Un Pedido cerrado no puede reabrirse ni eliminarse. El cierre
+impide nuevas Órdenes, pero no detiene la revisión de las ya recibidas.
+
 ### 4.2 Orden
 
 Una Orden es el envío individual de un usuario dentro de un Pedido. Es comparable a una solicitud que necesita revisión humana antes de considerarse procesada.
@@ -115,6 +127,7 @@ El repositorio contiene actualmente:
 - autorización por permisos y propiedad con identidad local temporal;
 - endpoints CRUD para Cartas;
 - endpoints de lectura y búsqueda para Publicaciones de cartas;
+- creación, consulta, modificación, cierre e historial de Pedidos;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
 - un pipeline de scraping con etapas de extracción, transformación y carga;
@@ -132,6 +145,7 @@ La superficie HTTP registrada actualmente incluye:
 | Permisos | `/permissions` | lectura del catálogo controlado |
 | Cartas | `/cards` | listar, obtener, crear, actualizar y eliminar |
 | Publicaciones | `/card-listings` | listar, obtener y buscar |
+| Pedidos | `/order-periods` | crear, listar, obtener, modificar, cerrar y consultar historial |
 
 La raíz `/` devuelve un mensaje de bienvenida.
 
@@ -139,11 +153,11 @@ Los endpoints protegidos no están disponibles de forma anónima. Durante el des
 
 ### 6.2 Estructura preparada pero incompleta
 
-Los componentes `collections` y `orders` ya existen dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. Su presencia define una dirección de organización, no una API disponible.
+El componente `collections` existe dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. `order_periods` implementa los Pedidos; las futuras Órdenes (`OrderRequest`) todavía no están implementadas.
 
 También están pendientes de definición o finalización:
 
-- estados y transiciones de Pedidos y Órdenes;
+- estados y transiciones de las Órdenes;
 - autenticación real, hashing de contraseñas y emisión de tokens;
 - representación de resultados parciales por carta;
 - persistencia coordinada de resultados obtenidos por búsqueda;
@@ -161,7 +175,7 @@ src/
 │   ├── api.py
 │   ├── cards/
 │   ├── collections/
-│   ├── orders/
+│   ├── order_periods/
 │   └── users/
 ├── core/
 │   ├── db/
@@ -302,11 +316,10 @@ Los secretos y valores dependientes del entorno deben permanecer fuera del repos
 
 Las siguientes ideas forman parte de la dirección del producto, pero todavía necesitan diseño y priorización:
 
-- trazabilidad completa de Pedidos y Órdenes;
+- trazabilidad completa de Órdenes;
 - Pre-Pedidos;
 - mapa de entrega;
 - históricos de precios;
-- históricos de Pedidos;
 - base de datos propia de publicaciones consultable sin scraping continuo.
 
 Esta lista no autoriza a implementar alcance adicional durante una tarea no relacionada.

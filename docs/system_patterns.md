@@ -726,6 +726,22 @@ Cada módulo:
 
 ## 17) Cómo extender un recurso
 
+### 17.1 Estado temporal derivado e historial de Pedidos
+
+`order_periods` mantiene `opens_at` y `closes_at` como fuente de verdad y deriva
+`draft`, `open` o `closed` usando el instante de la operación. No persiste un
+estado duplicado ni necesita un scheduler para bloquear nuevas solicitudes al
+vencer. Las actualizaciones toman un bloqueo de fila y vuelven a evaluar el
+estado antes de escribir, evitando reabrir un Pedido vencido por concurrencia.
+
+Cada mutación administrativa y su historial se escriben dentro de una misma
+transacción. El historial conserva evento, actor, instante y valores anterior y
+nuevo; `date_added` y `date_updated` no sustituyen esta auditoría funcional.
+
+**Patrón actual**: deriva estados que dependan exclusivamente del tiempo en vez
+de persistir copias susceptibles de desincronizarse, y coordina recurso e
+historial atómicamente cuando ambos formen parte de la misma operación.
+
 Para añadir un recurso dentro de un componente existente:
 
 1. Define `Resource`, `ResourceCreate`, `ResourceUpdate` y `ResourceResponse` en `domain/`.

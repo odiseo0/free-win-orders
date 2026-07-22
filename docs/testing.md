@@ -39,6 +39,9 @@ La suite actual contiene:
 - `tests/test_card_listing_search.py`: comprueba el fallback base de datos → scraper y la reutilización del resultado cacheado;
 - `tests/test_card_cases.py`: comprueba el error recuperable al consultar una Carta inexistente;
 - `tests/test_result.py`: comprueba las variantes inmutables del resultado tipado.
+- `tests/test_order_period_contracts.py` y `tests/test_order_period_rules.py`: comprueban contratos, zonas horarias y estados temporales de Pedidos;
+- `tests/test_order_period_cases.py`: comprueba coordinación, transacciones, historial y reglas de modificación de Pedidos;
+- `tests/test_order_period_authorization.py` y `tests/test_order_period_api.py`: comprueban permisos, visibilidad y contratos HTTP de Pedidos.
 
 Estas pruebas cubren el arranque mínimo y partes de transformación/carga del scraper. Todavía no existe cobertura automatizada para:
 
@@ -48,7 +51,8 @@ Estas pruebas cubren el arranque mínimo y partes de transformación/carga del s
 - integración real con PostgreSQL;
 - configuración de entorno;
 - extracción HTTP del scraper;
-- endpoints HTTP de `cards` y los componentes `collections` y `orders`.
+- endpoints HTTP de `cards` y el componente `collections`;
+- integración PostgreSQL de `order_periods` y sus migraciones.
 
 ### 3.2 Patrón async actual
 

@@ -317,7 +317,7 @@ Corrige estos patrones cuando formen parte directa del cambio solicitado y sea p
 
 ## 15) Glosario
 
-- **Componente**: agrupación funcional dentro de `src/api/`, como `users` u `orders`.
+- **Componente**: agrupación funcional dentro de `src/api/`, como `users` u `order_periods`.
 - **DAO**: objeto que encapsula operaciones de acceso y persistencia de datos.
 - **Schema**: modelo Pydantic que define datos de entrada, actualización o respuesta.
 - **Router**: grupo de endpoints FastAPI asociados con uno o varios recursos relacionados.

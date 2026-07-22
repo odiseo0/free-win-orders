@@ -119,6 +119,7 @@ pdm run fastapi dev src/application.py
 | Permisos | `/permissions` |
 | Cartas | `/cards` |
 | Publicaciones de cartas | `/card-listings` |
+| Pedidos | `/order-periods` |
 
 Cada router usa una `AsyncSession` proporcionada por la dependencia `get_db`.
 
@@ -146,7 +147,7 @@ src/
 │   ├── api.py
 │   ├── cards/
 │   ├── collections/
-│   ├── orders/
+│   ├── order_periods/
 │   └── users/
 ├── core/
 │   ├── db/
@@ -161,7 +162,8 @@ src/
 - `src/core/` contiene capacidades compartidas.
 - `src/settings/` separa configuración por responsabilidad.
 - `src/api/users/` es el componente más desarrollado y sirve como referencia actual.
-- `collections` y `orders` mantienen la estructura de capas, pero aún están incompletos.
+- `order_periods` implementa Pedidos con estado temporal derivado, historial y autorización.
+- `collections` y las futuras Órdenes (`OrderRequest`) aún están incompletas.
 
 La dirección de dependencias y responsabilidades se define en `docs/conventions.md`.
 
