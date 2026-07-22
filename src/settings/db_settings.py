@@ -15,12 +15,6 @@ class DBSettings(BaseSettings):
     pool_recycle: int = 1800
     pool_overflow: int = 10
 
-    @property
-    def url(self) -> str:
-        if self.SQLALCHEMY_DATABASE_URI is None:
-            raise RuntimeError("La URL de PostgreSQL no está configurada")
-        return self.SQLALCHEMY_DATABASE_URI
-
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     def assemble_db_connection(cls, v: str | None, info: ValidationInfo) -> str:
         if isinstance(v, str):

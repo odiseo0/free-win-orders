@@ -194,7 +194,7 @@ Todas son obligatorias en el modelo actual.
 
 `src/core/db/session.py` consume además estos atributos:
 
-- `db_settings.url`;
+- `db_settings.SQLALCHEMY_DATABASE_URI`;
 - `db_settings.pool_size`;
 - `db_settings.pool_timeout`;
 - `db_settings.pool_recycle`;

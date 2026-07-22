@@ -22,7 +22,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", db_settings.url)
+    config.set_main_option("sqlalchemy.url", db_settings.SQLALCHEMY_DATABASE_URI)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
