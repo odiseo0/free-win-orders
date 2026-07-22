@@ -37,6 +37,13 @@ class PermissionCode(StrEnum):
     ORDER_PERIODS_UPDATE = "order_periods.update"
     ORDER_PERIODS_CLOSE = "order_periods.close"
 
+    ORDER_REQUESTS_READ_SELF = "order_requests.read.self"
+    ORDER_REQUESTS_READ_ANY = "order_requests.read.any"
+    ORDER_REQUESTS_CREATE_SELF = "order_requests.create.self"
+    ORDER_REQUESTS_UPDATE_SELF = "order_requests.update.self"
+    ORDER_REQUESTS_UPDATE_ANY = "order_requests.update.any"
+    ORDER_REQUESTS_REVIEW = "order_requests.review"
+
 
 USER_PERMISSIONS = frozenset(
     {
@@ -49,5 +56,8 @@ USER_PERMISSIONS = frozenset(
         PermissionCode.CARDS_READ,
         PermissionCode.CARD_LISTINGS_READ,
         PermissionCode.ORDER_PERIODS_READ,
+        PermissionCode.ORDER_REQUESTS_READ_SELF,
+        PermissionCode.ORDER_REQUESTS_CREATE_SELF,
+        PermissionCode.ORDER_REQUESTS_UPDATE_SELF,
     }
 )

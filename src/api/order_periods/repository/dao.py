@@ -11,6 +11,7 @@ from src.api.order_periods.domain import (
     OrderPeriodUpdate,
 )
 from src.core.db import DAO
+from src.core.utils.utils import Empty, EmptyType
 
 from .models import OrderPeriod
 
@@ -19,6 +20,19 @@ if TYPE_CHECKING:
 
 
 class OrderPeriodDAO(DAO[OrderPeriod, OrderPeriodCreate, OrderPeriodUpdate]):
+    async def get_for_update(
+        self,
+        db: AsyncSession,
+        order_period_id: int,
+    ) -> OrderPeriod | EmptyType:
+        statement = (
+            select(self.model)
+            .where(self.model.id == order_period_id)
+            .with_for_update()
+        )
+        period = (await db.execute(statement)).scalar_one_or_none()
+        return period if period is not None else Empty
+
     async def get_multi(
         self,
         db: AsyncSession,

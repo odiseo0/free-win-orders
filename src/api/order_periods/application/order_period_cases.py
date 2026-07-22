@@ -149,7 +149,7 @@ async def update(
     period_in: OrderPeriodUpdate,
 ) -> Result[OrderPeriod, OrderPeriodMutationError]:
     now = datetime_now()
-    period = await dao.get(db, order_period_id)
+    period = await dao.get_for_update(db, order_period_id)
 
     if period is Empty:
         return Err(OrderPeriodNotFound(order_period_id))
