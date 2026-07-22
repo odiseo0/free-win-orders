@@ -49,8 +49,8 @@ Un Pedido:
 - no representa una compra individual;
 - no implica que las cartas se compren inmediatamente después de ser solicitadas.
 
-En código y API se representa como `OrderPeriod`; el futuro envío individual se
-representará como `OrderRequest`. Su estado se deriva de la ventana temporal:
+En código y API se representa como `OrderPeriod`; cada envío individual se
+representa como `OrderRequest`. Su estado se deriva de la ventana temporal:
 
 - `draft` antes de la apertura;
 - `open` desde la apertura y hasta antes del cierre;
@@ -73,6 +73,12 @@ Una Orden puede:
 - cambiar de estado a medida que avanza la gestión.
 
 El nombre **Orden** todavía es provisional. Debe usarse de forma consistente mientras no se adopte otro término, pero no debe tratarse como una decisión irreversible del dominio.
+
+La primera versión implementada permite crear, consultar y editar la Orden,
+administrar sus ítems y precios, consultar su historial y recorrer los estados
+`submitted`, `in_review`, `accepted`, `rejected` y `cancelled`. El documento
+`docs/orderRequestIdea.md` conserva el diseño de origen y separa las propuestas
+futuras del comportamiento disponible.
 
 ### 4.3 Usuario
 
@@ -128,6 +134,7 @@ El repositorio contiene actualmente:
 - endpoints CRUD para Cartas;
 - endpoints de lectura y búsqueda para Publicaciones de cartas;
 - creación, consulta, modificación, cierre e historial de Pedidos;
+- creación, consulta, edición, revisión, precios, estados e historial de Órdenes;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
 - un pipeline de scraping con etapas de extracción, transformación y carga;
@@ -146,6 +153,7 @@ La superficie HTTP registrada actualmente incluye:
 | Cartas | `/cards` | listar, obtener, crear, actualizar y eliminar |
 | Publicaciones | `/card-listings` | listar, obtener y buscar |
 | Pedidos | `/order-periods` | crear, listar, obtener, modificar, cerrar y consultar historial |
+| Órdenes | `/order-requests` | crear, listar, obtener, editar nota e ítems, revisar, cotizar, aceptar, rechazar, cancelar, reabrir y consultar historial |
 
 La raíz `/` devuelve un mensaje de bienvenida.
 
@@ -153,16 +161,51 @@ Los endpoints protegidos no están disponibles de forma anónima. Durante el des
 
 ### 6.2 Estructura preparada pero incompleta
 
-El componente `collections` existe dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. `order_periods` implementa los Pedidos; las futuras Órdenes (`OrderRequest`) todavía no están implementadas.
+El componente `collections` existe dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. `order_periods` implementa los Pedidos y `order_requests` implementa la primera versión de las Órdenes hasta la revisión inicial.
 
 También están pendientes de definición o finalización:
 
-- estados y transiciones de las Órdenes;
 - autenticación real, hashing de contraseñas y emisión de tokens;
-- representación de resultados parciales por carta;
+- pago y estado `paid` de las Órdenes;
+- cantidades efectivamente compradas y resultados posteriores a la revisión inicial;
+- dirección de entrega, comprobantes y trazabilidad de entrega;
+- plataforma y URL de origen dentro del snapshot de un ítem;
+- vista consolidada y exportación administrativa por Pedido;
 - persistencia coordinada de resultados obtenidos por búsqueda;
 - entorno Valkey disponible para validar la integración distribuida;
 - contrato uniforme de errores HTTP.
+
+### 6.3 Órdenes v1
+
+Un Usuario puede crear una Orden propia únicamente mientras el Pedido asociado
+está abierto. Cada ítem referencia una `CardListing` existente y conserva un
+snapshot de sus datos; la cantidad acordada comienza igual a la solicitada. Los
+recursos de otro Usuario se ocultan mediante `404`, mientras un Administrador
+con permisos globales puede consultar y administrar todas las Órdenes.
+
+El flujo administrativo disponible es:
+
+```text
+submitted → in_review → accepted
+     └───────────────→ rejected
+     └───────────────→ cancelled
+accepted | rejected | cancelled → in_review
+```
+
+Los precios definitivos se expresan en USD mediante los componentes unitarios de
+carta, envío e impuesto. El precio final, subtotales y total acordado se derivan
+de los ítems activos y no se persisten como totales independientes. Aceptar exige
+al menos un ítem activo y precios completos; cero es un importe válido. Cambiar
+cantidades o precios después de aceptar recalcula los totales sin cambiar el
+estado automáticamente.
+
+Cada mutación dependiente del estado bloquea la Orden y guarda su historial en la
+misma transacción. Retirar un ítem no lo elimina; si era el último activo, la
+Orden pasa a `cancelled`. Una operación sin cambios efectivos no genera un evento.
+
+Quedan expresamente fuera de esta versión: `paid`, cantidades compradas,
+dirección de entrega, comprobantes, plataforma/URL, vista consolidada,
+exportaciones y seguimiento de entrega.
 
 ## 7) Arquitectura general
 
@@ -176,6 +219,7 @@ src/
 │   ├── cards/
 │   ├── collections/
 │   ├── order_periods/
+│   ├── order_requests/
 │   └── users/
 ├── core/
 │   ├── db/
@@ -331,13 +375,14 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 1. `README.md`: resumen y estructura.
 2. `AGENTS.md`: contexto del dominio y reglas para agentes.
 3. `docs/general_documentation.md`: visión funcional y técnica general.
-4. `src/application.py`: creación de FastAPI.
-5. `src/api/api.py`: routers disponibles.
-6. `src/api/users/`: ejemplo más completo de un componente.
-7. `src/core/db/`: persistencia compartida.
-8. `src/core/services/scraper/`: pipeline de cartas.
-9. `docs/conventions.md`: reglas de implementación.
-10. `docs/system_patterns.md`: patrones técnicos detallados a medida que se documenten.
+4. `docs/orderRequestIdea.md`: diseño funcional previsto de las Órdenes.
+5. `src/application.py`: creación de FastAPI.
+6. `src/api/api.py`: routers disponibles.
+7. `src/api/users/`: ejemplo más completo de un componente.
+8. `src/core/db/`: persistencia compartida.
+9. `src/core/services/scraper/`: pipeline de cartas.
+10. `docs/conventions.md`: reglas de implementación.
+11. `docs/system_patterns.md`: patrones técnicos detallados a medida que se documenten.
 
 ## 13) Referencias
 
@@ -349,6 +394,7 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 - `src/core/db/`: infraestructura de persistencia.
 - `src/core/services/scraper/`: pipeline de scraping.
 - `docs/conventions.md`: convenciones de código y diseño.
+- `docs/orderRequestIdea.md`: decisiones y propuestas funcionales de las Órdenes.
 - `docs/system_patterns.md`: patrones del sistema.
 - `docs/tech_context.md`: contexto técnico.
 

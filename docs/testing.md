@@ -42,6 +42,10 @@ La suite actual contiene:
 - `tests/test_order_period_contracts.py` y `tests/test_order_period_rules.py`: comprueban contratos, zonas horarias y estados temporales de Pedidos;
 - `tests/test_order_period_cases.py`: comprueba coordinación, transacciones, historial y reglas de modificación de Pedidos;
 - `tests/test_order_period_authorization.py` y `tests/test_order_period_api.py`: comprueban permisos, visibilidad y contratos HTTP de Pedidos.
+- `tests/test_order_request_contracts.py`, `tests/test_order_request_rules.py` y `tests/test_order_request_authorization.py`: comprueban contratos, transiciones y permisos de Órdenes;
+- `tests/test_order_request_models.py` y `tests/test_order_request_dao.py`: comprueban metadata, restricciones y consultas de persistencia de Órdenes;
+- `tests/test_order_request_cases.py` y `tests/test_order_request_api.py`: comprueban transacciones, historial, errores recuperables y contratos HTTP de Órdenes;
+- `tests/test_order_request_flow.py`: recorre por HTTP la v1 completa con FastAPI y dependencias reemplazadas, incluyendo aislamiento entre propietarios.
 
 Estas pruebas cubren el arranque mínimo y partes de transformación/carga del scraper. Todavía no existe cobertura automatizada para:
 
