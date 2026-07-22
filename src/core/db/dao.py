@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Generic, Literal, TypedDict, TypeVar, Unpack, cast
 
@@ -84,12 +85,22 @@ class Kwargs(TypedDict, total=False):
     execution_options: KnownExecutionOptions
 
 
+class DAOError(Exception):
+    """Base error for persistence failures handled by the generic DAO."""
+
+
+class DAOIntegrityError(DAOError):
+    """A database constraint rejected a persistence operation."""
+
+
 @contextmanager
-def catch_sqlalchemy_exception() -> Any:
+def catch_sqlalchemy_exception() -> Iterator[None]:
     try:
         yield
-    except (IntegrityError, SQLAlchemyError) as e:
-        raise Exception from e
+    except IntegrityError as error:
+        raise DAOIntegrityError from error
+    except SQLAlchemyError as error:
+        raise DAOError from error
 
 
 class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
@@ -145,7 +156,7 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         *,
         where: dict[str, Any] | None = None,
         page: int = 0,
-        shows: int = 100,
+        shows: int | None = 100,
         ordering: list[tuple[str, bool]] | None = None,
         options: list[tuple[str, StrategyOptions]] | None = None,
         complex_filters: list[FilterTypes] | None = None,
@@ -174,7 +185,10 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
             statement = self.options(statement, options)
 
         ordered = cast("Select[tuple[ModelType]]", self.order_by(statement, ordering))
-        paginated = ordered.offset(page).limit(shows)
+        paginated = ordered.offset(page)
+
+        if shows is not None:
+            paginated = paginated.limit(shows)
 
         count = await self.count(db, statement)
         results = (await db.execute(paginated, **kwargs)).unique().scalars().all()
@@ -210,7 +224,7 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         *,
         objs_in: list[CreateSchema],
         commit: bool = True,
-    ) -> list[ModelType]:
+    ) -> list[int]:
         objs_in_data = [obj_in.model_dump(mode="python") for obj_in in objs_in]
         stmnt = (
             insert(self.model)
@@ -257,14 +271,12 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
 
     async def delete(
         self, db: AsyncSession, db_object: ModelType, *, commit: bool = True
-    ) -> ModelType:
+    ) -> None:
         with catch_sqlalchemy_exception():
-            deleted = await db.delete(db_object)
+            await db.delete(db_object)
 
             if commit:
                 await db.commit()
-
-        return deleted
 
     async def delete_many(
         self, db: AsyncSession, ids: list[int], *, commit: bool = True
@@ -283,13 +295,13 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
 
         return deleted
 
-    async def count(self, db: AsyncSession, statement: Select) -> int | None:
+    async def count(self, db: AsyncSession, statement: Select) -> int:
         count_statement = statement.with_only_columns(
             sql_func.count(),
             maintain_column_froms=True,
         ).order_by(None)
 
-        return (await db.execute(count_statement)).scalar_one_or_none()
+        return (await db.execute(count_statement)).scalar_one()
 
     def apply_filters(
         self, filters: list[FilterTypes], statement: Select[ModelType]

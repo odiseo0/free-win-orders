@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
 
 from src.core.constants import TZ
 from src.core.utils import deserialize_object, serialize_object
-from src.settings import db_settings
+from src.settings.db_settings import db_settings
 
 engine = create_async_engine(
     db_settings.SQLALCHEMY_DATABASE_URI,
