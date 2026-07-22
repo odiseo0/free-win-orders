@@ -27,8 +27,6 @@ class UserUpdate(User):
 
 class UserResponse(User):
     id: int
-    role_id: int
-    role_name: str
 
 
 class UserRoleAssignment(BaseModel):

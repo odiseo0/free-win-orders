@@ -259,7 +259,7 @@ El engine utiliza `asyncpg` y configura el servidor con zona horaria `America/Ca
 
 ### 8.5 Migraciones
 
-Alembic está configurado en `migrations/`. La revisión `20260722_01` incorpora Roles y Permisos sobre el esquema previo; todavía hace falta consolidar una historia base reproducible para una base completamente vacía.
+Alembic está configurado en `migrations/`. La revisión inicial `20260722_01` crea el esquema completo actual, incluidas las tablas de Usuarios, Roles, Permisos, Cartas y Publicaciones, y puede aplicarse sobre una base vacía.
 
 **Restricción actual**: el esquema no debe considerarse gestionado para producción hasta que exista una historia de migraciones reproducible. La creación implícita de tablas no sustituye migraciones versionadas.
 
@@ -446,10 +446,15 @@ Después de aplicar el esquema, el catálogo se inicializa explícitamente y fue
 ```bash
 pdm run alembic upgrade head
 pdm run python -m src.api.roles.bootstrap
+```
+
+Sobre una base vacía, el primer bootstrap crea `Admin`, `User`, sus permisos y los puentes necesarios. Después se registra el primer usuario mediante `POST /users`. Cuando el usuario ya existe, puede promoverse ejecutando nuevamente el bootstrap:
+
+```bash
 pdm run python -m src.api.roles.bootstrap --admin-user-id 123
 ```
 
-El bootstrap es idempotente. La última variante asigna `Admin` a un usuario existente y revierte sus cambios si el ID no existe.
+El bootstrap es idempotente. La variante con `--admin-user-id` revierte sus cambios si el ID no existe.
 
 ### 15.2 Artefactos de despliegue
 
@@ -499,7 +504,6 @@ Los secretos deben permanecer en variables de entorno y nunca registrarse ni inc
 | --- | --- | --- |
 | Dependencias directas y de desarrollo incompletas | Instalación no completamente reproducible | `docs/tech_context.md` |
 | `DBSettings` no expone atributos usados por la sesión | Arranque de persistencia incompleto | `docs/tech_context.md` |
-| Historia Alembic previa incompleta | Una base vacía aún necesita una revisión base | `docs/tech_context.md` |
 | Contrato de errores inconsistente | API difícil de consumir de forma uniforme | `docs/system_patterns.md` |
 | Solo identidad local temporal | API no preparada todavía para exposición pública | documento de seguridad futuro |
 | Sin lifecycle del executor | Recursos multiproceso sin cierre explícito | `docs/system_patterns.md` |

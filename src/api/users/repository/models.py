@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
-from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
 from src.core.db import Base, Date
@@ -33,7 +32,6 @@ class UserRole(MappedAsDataclass, Base, Date, kw_only=True):
         lazy="joined",
         init=False,
     )
-    role_name: AssociationProxy[str] = association_proxy("role", "name")
 
 
 class UserAddress(MappedAsDataclass, Base, Date, kw_only=True):
@@ -78,7 +76,6 @@ class User(MappedAsDataclass, Base, Date, kw_only=True):
         lazy="joined",
         init=False,
     )
-    role_name: AssociationProxy[str] = association_proxy("role", "role_name")
     addresses: Mapped[list[UserAddress]] = relationship(
         "UserAddress", back_populates="user", init=False
     )

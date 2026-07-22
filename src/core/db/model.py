@@ -68,6 +68,7 @@ class Date:
     )
     date_updated: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
+        default=None,
         nullable=True,
         onupdate=datetime_now,
     )

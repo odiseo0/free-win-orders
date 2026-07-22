@@ -422,7 +422,9 @@ class User(MappedAsDataclass, Base, Date, kw_only=True):
 `Date` añade:
 
 - `date_added`, generado localmente y por servidor;
-- `date_updated`, nullable y actualizado al modificar.
+- `date_updated`, nullable, con `default=None` al construir la dataclass y actualizado al modificar.
+
+En modelos declarados con `MappedAsDataclass`, `nullable=True` describe la columna pero no vuelve opcional el argumento de `__init__`. Cuando un campo nullable deba omitirse al construir el modelo, declara también un default de Python explícito.
 
 **Patrón actual**: úsalo en entidades persistentes que necesiten trazabilidad temporal básica. La trazabilidad completa de estados de Pedidos y Órdenes requerirá entidades o eventos adicionales; los dos timestamps no la sustituyen.
 

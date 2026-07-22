@@ -148,7 +148,6 @@ También están pendientes de definición o finalización:
 - representación de resultados parciales por carta;
 - persistencia coordinada de resultados obtenidos por búsqueda;
 - entorno Valkey disponible para validar la integración distribuida;
-- completar una historia base de Alembic para todo el esquema previo;
 - contrato uniforme de errores HTTP.
 
 ## 7) Arquitectura general
