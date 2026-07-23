@@ -55,8 +55,10 @@ async def get_card_by_id(id: int) -> YGROPROResponse:
         response.raise_for_status()
 
     payload = response.json()
+
     if not isinstance(payload, dict):
         raise ValueError("YGOPRO devolvió una respuesta inesperada")
+
     return payload
 
 
