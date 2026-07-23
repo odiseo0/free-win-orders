@@ -28,7 +28,7 @@ async def scrape_cards(cards: list[str]) -> Iterable[tuple[str, str | None]]:
             encoded_name = quote(card_name, safe="").replace("%20", "+")
             tasks.append(asyncio.create_task(_bounded_fetch(client, encoded_name)))
 
-    htmls = await asyncio.gather(*tasks)
+        htmls = await asyncio.gather(*tasks)
 
     return zip(cards, htmls)
 

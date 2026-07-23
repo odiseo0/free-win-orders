@@ -39,7 +39,7 @@ def _parse_price(price: str) -> Decimal:
 def _card_listing_row(listing: CardListingData) -> dict[str, object]:
     return {
         "name": listing.name,
-        "set": listing.set,
+        "ygo_set": listing.set,
         "code": listing.code,
         "price": _parse_price(listing.price),
         "rarity": listing.rarity,
@@ -61,7 +61,7 @@ class SQLAlchemyScraperStore:
             constraint="uq_card_listings_code_condition",
             set_={
                 "name": stmt.excluded.name,
-                "set": stmt.excluded.set,
+                "ygo_set": stmt.excluded.ygo_set,
                 "price": stmt.excluded.price,
                 "rarity": stmt.excluded.rarity,
                 "stock": stmt.excluded.stock,

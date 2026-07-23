@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Generic, Literal, TypedDict, TypeVar, Unpack, cast
+from typing import Any, Generator, Generic, Literal, TypedDict, TypeVar, Unpack, cast
 
 from pydantic import BaseModel
 from sqlalchemy import asc
@@ -16,18 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, RelationshipProperty, strategy_options
 from sqlalchemy.sql import Select, select
 
-from src.core.utils.filters import (
-    After,
-    AnyFieldFilter,
-    Before,
-    BeforeAfter,
-    DateAdded,
-    FieldFilter,
-    FilterTypes,
-    MonthlyFilter,
-    OrderBy,
-    Search,
-)
+from src.core.utils.filters import  FilterTypes, OrderBy
 from src.core.utils.utils import Empty, EmptyType
 
 from .model import Base
@@ -94,7 +82,7 @@ class DAOIntegrityError(DAOError):
 
 
 @contextmanager
-def catch_sqlalchemy_exception() -> Iterator[None]:
+def catch_sqlalchemy_exception() -> Generator[None]:
     try:
         yield
     except IntegrityError as error:
@@ -104,27 +92,56 @@ def catch_sqlalchemy_exception() -> Iterator[None]:
 
 
 class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
-    def __init__(self, model: type[ModelType]):
+    def __init__(
+        self,
+        model: type[ModelType],
+        *,
+        default_options: list[tuple[str, StrategyOptions]] | None = None,
+    ):
         self.model = model
+        self.default_options = default_options
 
     async def get(
         self,
         db: AsyncSession,
         _id: int,
         options: list[tuple[str, StrategyOptions]] | None = None,
+        *,
+        for_update: bool = False,
         **kwargs: Unpack[Kwargs],
     ) -> ModelType | EmptyType:
         statement = select(self.model).where(self.model.id == _id)
 
-        if options is not None:
-            statement = self.options(statement, options)
+        effective_options = (
+            options if options is not None else self.default_options
+        )
+        if effective_options is not None:
+            statement = self.options(statement, effective_options)
+
+        if for_update:
+            statement = statement.with_for_update()
 
         result = (await db.execute(statement, **kwargs)).unique().scalar_one_or_none()
 
-        if not result:
+        if result is None:
             return Empty
 
         return result
+
+    async def get_for_update(
+        self,
+        db: AsyncSession,
+        _id: int,
+        options: list[tuple[str, StrategyOptions]] | None = None,
+        **kwargs: Unpack[Kwargs],
+    ) -> ModelType | EmptyType:
+        return await self.get(
+            db,
+            _id,
+            options=options,
+            for_update=True,
+            **kwargs,
+        )
 
     async def get_by(
         self,
@@ -145,7 +162,7 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
 
         result = (await db.execute(statement, **kwargs)).unique().scalar_one_or_none()
 
-        if not result:
+        if result is None:
             return Empty
 
         return result
@@ -177,9 +194,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
 
             statement = statement.where(*conditions)
 
-        if complex_filters is not None:
-            statement = self.apply_filters(complex_filters, statement)
-
         if ordering is None:
             ordering = [("date_added", True)]
 
@@ -207,7 +221,8 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         exclude: set[str] | None = None,
     ) -> ModelType:
         if isinstance(obj_in, dict) is False:
-            obj_in: dict[str, Any] = obj_in.model_dump(mode="python", exclude=exclude)
+            obj_in = cast(CreateSchema, obj_in)
+            obj_in = obj_in.model_dump(mode="python", exclude=exclude)
 
         obj_in = cast("dict[str, Any]", obj_in)  # Redefinition because of type hinting
         stmt = insert(self.model).values(**obj_in).returning(self.model.id)
@@ -218,7 +233,28 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
             if commit:
                 await db.commit()
 
-        return await self.get(db, obj_id, options)
+        created = await self.get(db, obj_id, options)
+        if created is Empty:
+            raise DAOError("El registro creado no pudo recuperarse")
+        return created
+
+    async def add(
+        self,
+        db: AsyncSession,
+        db_object: ModelType,
+        *,
+        flush: bool = True,
+    ) -> ModelType:
+        db.add(db_object)
+
+        if flush:
+            await self.flush(db)
+
+        return db_object
+
+    async def flush(self, db: AsyncSession) -> None:
+        with catch_sqlalchemy_exception():
+            await db.flush()
 
     async def create_many(
         self,
@@ -251,7 +287,8 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         options: list[tuple[str, StrategyOptions]] | None = None,
     ) -> ModelType:
         if isinstance(obj_in, dict) is False:
-            obj_in: dict[str, Any] = obj_in.model_dump(mode="json", exclude_unset=True)
+            obj_in = cast(UpdateSchema, obj_in)
+            obj_in = obj_in.model_dump(mode="json", exclude_unset=True)
 
         update_data = cast(
             "dict[str, Any]", obj_in
@@ -269,7 +306,10 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
             if commit:
                 await db.commit()
 
-        return await self.get(db, obj_id, options)
+        updated = await self.get(db, obj_id, options)
+        if updated is Empty:
+            raise DAOError("El registro actualizado no pudo recuperarse")
+        return updated
 
     async def delete(
         self, db: AsyncSession, db_object: ModelType, *, commit: bool = True
@@ -304,55 +344,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         ).order_by(None)
 
         return (await db.execute(count_statement)).scalar_one()
-
-    def apply_filters(
-        self, filters: list[FilterTypes], statement: Select[ModelType]
-    ) -> Select[ModelType]:
-        for filter_ in filters:
-            if isinstance(filter_, DateAdded) and filter_.date_added is not None:
-                statement = statement.where(
-                    sql_func.date(self.model.date_added) == filter_.date_added
-                )
-            elif isinstance(filter_, Before) and filter_.date_added is not None:
-                statement = statement.where(
-                    sql_func.date(self.model.date_added) < filter_.date_added
-                )
-            elif isinstance(filter_, After) and filter_.date_added is not None:
-                statement = statement.where(
-                    sql_func.date(self.model.date_added) > filter_.date_added
-                )
-            elif isinstance(filter_, BeforeAfter) and (
-                filter_.date_after is not None and filter_.date_before is not None
-            ):
-                statement = statement.where(
-                    sql_func.date(self.model.date_added) >= filter_.date_after,
-                    sql_func.date(self.model.date_added) <= filter_.date_before,
-                )
-            elif isinstance(filter_, Search) and filter_.field_name is not None:
-                attr = cast(
-                    "InstrumentedAttribute", getattr(self.model, filter_.field_name)
-                )
-                statement = statement.where(attr.ilike(f"%{filter_.value}%"))
-            elif (
-                isinstance(filter_, FieldFilter)
-                and filter_.field is not None
-                and filter_.value is not None
-            ):
-                attr = cast("InstrumentedAttribute", getattr(self.model, filter_.field))
-                statement = statement.where(attr == filter_.value)
-            elif isinstance(filter_, MonthlyFilter) and filter_.month is not None:
-                attr = cast(
-                    "InstrumentedAttribute",
-                    getattr(self.model, filter_.field_name or "date_added", None),
-                )
-                statement = statement.where(
-                    sql_func.date_trunc("MONTH", attr)
-                    == sql_func.date_trunc("MONTH", filter_.month),
-                )
-            elif isinstance(filter_, AnyFieldFilter) and filter_.any_value is not None:
-                statement = self.any_filter()
-
-        return statement
 
     def order_by(
         self,
@@ -406,6 +397,3 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
                 raise Exception from e
 
         return statement
-
-    def any_filter(self) -> Any:
-        return

@@ -2,7 +2,7 @@ from typing import TypedDict
 
 from httpx import AsyncClient, HTTPStatusError, RequestError
 
-from src.core.constants import YGO_API_URL
+from src.core.constants import REQUEST_TIMEOUT_SECONDS, YGO_API_URL
 
 
 class YGOPROCardImage(TypedDict):
@@ -22,7 +22,7 @@ class YGOPROCard(TypedDict):
 
 class YGROPROResponse(TypedDict):
     data: list[YGOPROCard]
-    error: str | None = None
+    error: str | None
 
 
 async def fuzzy_search(query: str) -> list[YGROPROResponse]:
@@ -31,35 +31,39 @@ async def fuzzy_search(query: str) -> list[YGROPROResponse]:
     if not normalized_query:
         return []
 
-    async with AsyncClient(base_url=YGO_API_URL) as client:
-        response = await client.get(params={"fname": normalized_query})
+    async with AsyncClient(
+        base_url=YGO_API_URL,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    ) as client:
+        response = await client.get(url=YGO_API_URL, params={"fname": normalized_query})
+        response.raise_for_status()
 
     payload = response.json()
 
-    try:
-        cache_value: list[YGROPROResponse]
+    if not isinstance(payload, dict):
+        raise ValueError("YGOPRO devolvió una respuesta inesperada")
 
-        if isinstance(payload, list):
-            cache_value = payload
-        else:
-            cache_value = [payload]
-    except Exception:
-        return payload
-
-    return cache_value
+    return [payload]
 
 
 async def get_card_by_id(id: int) -> YGROPROResponse:
-    async with AsyncClient(base_url=YGO_API_URL) as client:
-        response = await client.get(params={"id": id})
+    async with AsyncClient(
+        base_url=YGO_API_URL,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    ) as client:
+        response = await client.get(url=YGO_API_URL, params={"id": id})
+        response.raise_for_status()
 
-    return response.json()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("YGOPRO devolvió una respuesta inesperada")
+    return payload
 
 
 async def safe_get_card_by_id(id: int) -> YGROPROResponse | None:
     try:
         return await get_card_by_id(id)
-    except Exception:
+    except (HTTPStatusError, RequestError, ValueError):
         return None
 
 
@@ -69,7 +73,10 @@ async def get_cards_by_ids(ids: list[int]) -> list[YGOPROCard]:
 
     joined_ids = ",".join(str(id) for id in ids)
 
-    async with AsyncClient(base_url=YGO_API_URL) as client:
+    async with AsyncClient(
+        base_url=YGO_API_URL,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    ) as client:
         try:
             response = await client.get(f"{YGO_API_URL}?id={joined_ids}")
             response.raise_for_status()
@@ -78,7 +85,7 @@ async def get_cards_by_ids(ids: list[int]) -> list[YGOPROCard]:
 
     try:
         payload = response.json()
-    except Exception:
+    except ValueError:
         return []
 
     data = payload.get("data")

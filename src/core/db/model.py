@@ -45,11 +45,12 @@ class AwaitAttrs:
         return await greenlet_spawn(
             getattr,
             self,
-            attr.key,
+            attr.key, # type: ignore
         )
 
 
 class Base(AwaitAttrs, DeclarativeBase):
+    id: Any
     metadata = meta
     registry = _registry(type_annotation_map={datetime: DateTime(timezone=True)})
 
