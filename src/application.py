@@ -1,5 +1,5 @@
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,7 +64,7 @@ OPENAPI_TAGS = [
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     cache = get_cache()
 
     try:
