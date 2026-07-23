@@ -24,3 +24,16 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.basedpyright]
+exclude = ["**/node_modules", "**/__pycache__", ".venv"]
+typeCheckingMode = "standard"
+
+# Crucial settings for FastAPI and Pydantic
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportReturnType = false
+reportArgumentType = false

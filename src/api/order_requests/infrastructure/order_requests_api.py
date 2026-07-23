@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, assert_never
+from typing import Annotated, Any, assert_never
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi import status as http_status
@@ -69,7 +69,7 @@ _REQUEST_NOT_FOUND_RESPONSE = {
 _VALIDATION_RESPONSE = {
     "description": "La entrada, paginación o filtros no cumplen el contrato.",
 }
-_STATUS_ACTION_RESPONSES = {
+_STATUS_ACTION_RESPONSES: dict[int, dict[str, Any]] = {
     401: _UNAUTHORIZED_RESPONSE,
     403: _FORBIDDEN_RESPONSE,
     404: _REQUEST_NOT_FOUND_RESPONSE,
@@ -409,6 +409,7 @@ async def start_order_request_review(
     order_request_id: Annotated[int, Path(gt=0)],
 ) -> OrderRequestResponse:
     result = await start_review(db, actor, order_request_id)
+
     match result:
         case Ok(request):
             return request
