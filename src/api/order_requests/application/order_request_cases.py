@@ -136,7 +136,7 @@ async def _get_locked_for_write(
     if request is Empty:
         return Err(OrderRequestNotFound(order_request_id))
 
-    request = cast(OrderRequest, request)
+    request = cast("OrderRequest", request)
     decision = can_access_order_request(
         actor,
         owner_user_id=request.created_by_user_id,
@@ -220,7 +220,7 @@ async def create(
     if period is Empty:
         return Err(OrderPeriodNotFound(request_in.order_period_id))
 
-    period = cast(OrderPeriod, period)
+    period = cast("OrderPeriod", period)
     now = datetime_now()
     period_status = resolve_order_period_status(
         period.opens_at,
