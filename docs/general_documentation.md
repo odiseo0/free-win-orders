@@ -159,7 +159,31 @@ La raíz `/` devuelve un mensaje de bienvenida.
 
 Los endpoints protegidos no están disponibles de forma anónima. Durante el desarrollo puede configurarse temporalmente `AUTH_MODE=local` junto con `AUTH_LOCAL_USER_ID`; si falta cualquiera de los valores, responden `401`. El registro `POST /users` permanece público y siempre asigna el rol de sistema `User`.
 
-### 6.2 Estructura preparada pero incompleta
+### 6.2 Contrato HTTP normalizado
+
+OpenAPI es el contrato oficial entre el backend y sus clientes. La normalización
+se aplicó directamente sobre las rutas existentes, sin duplicarlas ni introducir
+un período adicional de deprecación. Los consumidores deben coordinar estos
+cambios incompatibles:
+
+- los listados paginados de Usuarios, Direcciones, Roles de usuario, Cartas y
+  Publicaciones comienzan en `page=1`;
+- esos listados validan `1 <= shows <= 100` y responden `{items, total}`;
+- las búsquedas de Publicaciones y los catálogos completos de Roles y Permisos
+  continúan como arrays porque no representan listados paginados;
+- las eliminaciones exitosas de Usuarios, Direcciones y Roles de usuario
+  responden `204 No Content` sin cuerpo;
+- los identificadores de ruta deben ser positivos; cero y valores negativos
+  producen la validación estándar `422` de FastAPI;
+- la creación de Direcciones y Roles de usuario responde `201 Created`;
+- las actualizaciones y acciones conservan `200 OK`, salvo eliminaciones con
+  `204 No Content`.
+
+Estos cambios sustituyen las respuestas de texto `"Eliminado"`, las páginas
+basadas en cero y los arrays paginados anteriores. `user-roles` continúa marcado
+como obsoleto: su normalización no revierte ni amplía esa estrategia.
+
+### 6.3 Estructura preparada pero incompleta
 
 El componente `collections` existe dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. `order_periods` implementa los Pedidos y `order_requests` implementa la primera versión de las Órdenes hasta la revisión inicial.
 
@@ -175,7 +199,7 @@ También están pendientes de definición o finalización:
 - entorno Valkey disponible para validar la integración distribuida;
 - contrato uniforme de errores HTTP.
 
-### 6.3 Órdenes v1
+### 6.4 Órdenes v1
 
 Un Usuario puede crear una Orden propia únicamente mientras el Pedido asociado
 está abierto. Cada ítem referencia una `CardListing` existente y conserva un

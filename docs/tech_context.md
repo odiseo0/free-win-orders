@@ -94,8 +94,10 @@ El scraper también utiliza:
 `src/application.py` crea la instancia `app` de FastAPI con:
 
 - título `Free Win`;
-- descripción `Free Win API REST.`;
-- versión `1.0`;
+- descripción funcional en español;
+- versión `0.1.0`, alineada con `pyproject.toml`;
+- licencia MIT;
+- tags descritos y ordenados;
 - middleware CORS;
 - router principal;
 - endpoint de bienvenida `GET /`.
@@ -136,7 +138,13 @@ El middleware actual permite:
 
 ### 5.4 OpenAPI
 
-FastAPI expone su documentación OpenAPI con el comportamiento predeterminado. Todavía no existe una política por entorno para habilitarla u ocultarla.
+OpenAPI es el contrato oficial entre el backend y sus clientes. La aplicación
+publica metadata funcional, modelos HTTP transversales para errores, validación y
+paginación, y `operation_id` estables en los componentes consolidados. La
+descripción explica la identidad local temporal sin declarar un `securityScheme`
+que el backend todavía no consume.
+
+Todavía no existe una política por entorno para habilitar u ocultar OpenAPI.
 
 ## 6) Organización del código
 

@@ -188,11 +188,37 @@ class UserAddressResponse(UserAddress):
 
 ### 8.3 Contrato y documentación OpenAPI
 
-- **Required** declara el tipo o `response_model` esperado para cada endpoint.
-- **Required** usa códigos de estado coherentes con el resultado de la operación.
-- **Recommended** añade `summary`, `description` y `responses` cuando el comportamiento no sea evidente o existan respuestas alternativas relevantes.
+- **Required** OpenAPI es el contrato oficial entre el backend y sus clientes. Los endpoints nuevos cumplen esta sección desde su incorporación; los existentes se adaptan de forma coordinada y no se consideran conformes únicamente por aparecer en el esquema generado.
+- **Required** redacta en español el `summary` y la `description` de cada endpoint. El resumen identifica brevemente la operación y la descripción explica su intención, permisos y reglas relevantes sin obligar a leer la implementación.
+- **Required** asigna a cada endpoint un `operation_id` explícito, único y estable, orientado a su uso desde un cliente. No lo derives de nombres internos que puedan cambiar durante una refactorización.
+- **Required** declara explícitamente el `response_model` y el `status_code` de éxito. Ambos deben coincidir con el cuerpo y el código que devuelve la implementación.
+- **Required** documenta en `responses` solamente los errores que la operación puede producir. Cada respuesta indica el modelo, la causa y, cuando aporte claridad, un ejemplo representativo.
+- **Required** describe y restringe los parámetros de ruta y consulta con `Path`, `Query` u otros tipos de FastAPI. La documentación debe indicar el significado de valores, límites, aliases y unidades que no sean evidentes.
+- **Required** describe en los schemas de entrada y salida los campos con significado de negocio. Usa `Field` para expresar restricciones y añade ejemplos útiles para cuerpos o campos relevantes, especialmente cuando existan unidades, valores calculados o valores nulos con significado propio.
+- **Required** la documentación pública no revela la existencia de recursos que las reglas de autorización presentan como inexistentes.
 - **Recommended** devuelve datos que FastAPI pueda validar contra el schema de respuesta; evita construir manualmente un schema Pydantic solo para que FastAPI vuelva a validarlo y serializarlo.
 - **Recommended** la disponibilidad de OpenAPI por entorno debe configurarse centralmente si el despliegue futuro requiere ocultarlo; no disperses esta decisión entre routers.
+
+Las siguientes convenciones HTTP son obligatorias para endpoints nuevos y constituyen el destino de la normalización coordinada de los endpoints existentes:
+
+- **Required** la paginación comienza en `page=1`.
+- **Required** `shows` acepta valores entre 1 y 100, ambos incluidos.
+- **Required** un listado paginado responde con la forma `{items, total}`. Un catálogo completo sin paginación puede responder con un array.
+- **Required** una eliminación exitosa responde `204 No Content` sin cuerpo.
+- **Required** un error recuperable expuesto por la API responde con la forma `{detail: string}` y un código HTTP específico para la causa.
+- **Required** los errores de validación responden `422` con la estructura estándar de FastAPI. No sustituyas esa estructura por `{detail: string}`.
+
+Comparte modelos o catálogos de respuestas solamente cuando representen un contrato transversal real. No crees una abstracción para cada combinación posible de códigos de respuesta; una operación puede declarar localmente sus descripciones y ejemplos específicos.
+
+### 8.4 Checklist manual para endpoints nuevos
+
+Antes de integrar un endpoint nuevo, verifica:
+
+- [ ] ¿Tiene `summary`, `description` y `operation_id` explícitos, únicos y estables?
+- [ ] ¿Declara el `response_model`, el código de éxito y solamente los errores que puede producir?
+- [ ] ¿Los parámetros, cuerpos y campos relevantes explican restricciones, unidades, nulabilidad y ejemplos necesarios?
+- [ ] ¿La paginación, las eliminaciones y los errores siguen las convenciones HTTP de esta sección?
+- [ ] ¿El esquema generado describe el comportamiento real sin revelar recursos ocultos por autorización?
 
 ## 9) Persistencia con SQLAlchemy
 

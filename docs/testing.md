@@ -401,6 +401,19 @@ Para un escenario específico:
 pdm run pytest tests/test_scraper_loader.py::test_load_scraped_data_skips_empty_batches
 ```
 
+Para exportar el contrato que sirven Swagger UI y ReDoc:
+
+```bash
+pdm run python scripts/export_openapi.py
+```
+
+El archivo resultante se guarda en `docs/openapi.json`. Después de modificar un
+componente HTTP, revisa el diff del JSON y abre `/docs` y `/redoc` sobre la
+aplicación local. La suite comprueba generación, `operationId`, modelos
+compartidos, estados críticos, respuestas `204`, aliases y ejemplos; la
+completitud editorial de summaries y descripciones permanece en la checklist
+manual de `docs/conventions.md`.
+
 Flujo recomendado:
 
 1. Ejecuta la prueba o archivo relacionado mientras implementas.
