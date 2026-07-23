@@ -57,11 +57,10 @@ async def read_card(
             assert_never(unexpected)
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_actor(PermissionCode.CARDS_CREATE))])
 async def create_card(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Cache, Depends(get_cache)],
-    _: Annotated[Actor, Depends(require_actor(PermissionCode.CARDS_CREATE))],
     card_in: CardCreate,
 ) -> CardResponse:
     result = await create(db, cache, card_in)
