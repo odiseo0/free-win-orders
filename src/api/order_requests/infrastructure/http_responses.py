@@ -9,7 +9,6 @@ from src.api.order_requests.domain import (
     OrderRequestAccessDenied,
     OrderRequestCannotAccept,
     OrderRequestCardListingNotFound,
-    OrderRequestErrorResponse,
     OrderRequestInvalidTransition,
     OrderRequestItemAlreadyExists,
     OrderRequestItemCannotBeAdded,
@@ -19,32 +18,111 @@ from src.api.order_requests.domain import (
     OrderRequestNotEditable,
     OrderRequestNotFound,
 )
+from src.core.schema import (
+    CONFLICT_RESPONSE,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+    VALIDATION_RESPONSE,
+)
 
-_UNAUTHORIZED_RESPONSE = {
-    "model": OrderRequestErrorResponse,
-    "description": "No existe una identidad autenticada válida.",
-}
-_FORBIDDEN_RESPONSE = {
-    "model": OrderRequestErrorResponse,
-    "description": "La identidad no posee el permiso requerido.",
-}
+_UNAUTHORIZED_RESPONSE = UNAUTHORIZED_RESPONSE
+_FORBIDDEN_RESPONSE = FORBIDDEN_RESPONSE
 _REQUEST_NOT_FOUND_RESPONSE = {
-    "model": OrderRequestErrorResponse,
+    **NOT_FOUND_RESPONSE,
     "description": "La Orden no existe o pertenece a otro Usuario.",
 }
-_VALIDATION_RESPONSE = {
-    "description": "La entrada, paginación o filtros no cumplen el contrato.",
-}
-_FORBIDDEN_RESPONSE = {
-    "model": OrderRequestErrorResponse,
+_CONFLICT_RESPONSE = {
+    **CONFLICT_RESPONSE,
     "description": "La transición o sus precondiciones no son válidas.",
 }
-STATUS_ACTION_RESPONSES: dict[int, dict[str, Any]] = {
+_ACCEPT_CONFLICT_RESPONSE = {
+    **_CONFLICT_RESPONSE,
+    "content": {
+        "application/json": {
+            "examples": {
+                "invalidTransition": {
+                    "summary": "Transición no permitida",
+                    "value": {
+                        "detail": (
+                            "La transición solicitada no es válida para el estado "
+                            "actual"
+                        )
+                    },
+                },
+                "incompletePrices": {
+                    "summary": "Precios incompletos",
+                    "value": {
+                        "detail": (
+                            "Todos los ítems activos deben tener precios completos"
+                        )
+                    },
+                },
+            }
+        }
+    },
+}
+_VALIDATION_RESPONSE = VALIDATION_RESPONSE
+CREATE_ORDER_REQUEST_RESPONSES: dict[int, dict[str, Any]] = {
+    401: _UNAUTHORIZED_RESPONSE,
+    403: _FORBIDDEN_RESPONSE,
+    404: {
+        **NOT_FOUND_RESPONSE,
+        "description": "El Pedido o una publicación de carta no existe.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "period": {
+                        "summary": "Pedido inexistente",
+                        "value": {"detail": "El Pedido no existe"},
+                    },
+                    "listing": {
+                        "summary": "Publicación inexistente",
+                        "value": {
+                            "detail": "La publicación de carta no existe"
+                        },
+                    },
+                }
+            }
+        },
+    },
+    409: {
+        **CONFLICT_RESPONSE,
+        "description": "El Pedido no está abierto para recibir Órdenes.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "detail": "El Pedido no está abierto para recibir Órdenes"
+                }
+            }
+        },
+    },
+    422: _VALIDATION_RESPONSE,
+}
+ORDER_ACTION_RESPONSES: dict[int, dict[str, Any]] = {
     401: _UNAUTHORIZED_RESPONSE,
     403: _FORBIDDEN_RESPONSE,
     404: _REQUEST_NOT_FOUND_RESPONSE,
-    409: _FORBIDDEN_RESPONSE,
+    409: _CONFLICT_RESPONSE,
     422: _VALIDATION_RESPONSE,
+}
+ADD_ITEM_RESPONSES: dict[int, dict[str, Any]] = {
+    **ORDER_ACTION_RESPONSES,
+    404: {
+        **NOT_FOUND_RESPONSE,
+        "description": "La Orden o la publicación de carta no existe o no es visible.",
+    },
+}
+ITEM_ACTION_RESPONSES: dict[int, dict[str, Any]] = {
+    **ORDER_ACTION_RESPONSES,
+    404: {
+        **NOT_FOUND_RESPONSE,
+        "description": "La Orden o su ítem no existe o no es visible.",
+    },
+}
+ACCEPT_ORDER_REQUEST_RESPONSES: dict[int, dict[str, Any]] = {
+    **ORDER_ACTION_RESPONSES,
+    409: _ACCEPT_CONFLICT_RESPONSE,
 }
 
 def _raise_request_not_found() -> None:

@@ -6,7 +6,7 @@ from enum import StrEnum
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.core.schema import BaseModel
+from src.core.schema import BaseModel, PaginatedResponse
 
 MONEY_QUANTUM = Decimal("0.01")
 
@@ -34,14 +34,34 @@ class OrderRequestEventType(StrEnum):
 
 
 class OrderRequestItemCreate(BaseModel):
-    card_listing_id: int = Field(gt=0)
-    requested_quantity: int = Field(gt=0)
+    card_listing_id: int = Field(
+        gt=0,
+        description="Identificador de la publicación de carta que se desea comprar.",
+        examples=[145],
+    )
+    requested_quantity: int = Field(
+        gt=0,
+        description="Cantidad de copias solicitadas por el usuario.",
+        examples=[2],
+    )
 
 
 class OrderRequestCreate(BaseModel):
-    order_period_id: int = Field(gt=0)
-    note: str | None = Field(default=None, max_length=2000)
-    items: list[OrderRequestItemCreate] = Field(min_length=1)
+    order_period_id: int = Field(
+        gt=0,
+        description="Pedido abierto dentro del cual se envía la Orden.",
+        examples=[12],
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Nota opcional compartida entre el usuario y los administradores.",
+        examples=["Priorizar cartas en condición Near Mint."],
+    )
+    items: list[OrderRequestItemCreate] = Field(
+        min_length=1,
+        description="Cartas solicitadas; una publicación no puede repetirse.",
+    )
 
     @model_validator(mode="after")
     def reject_duplicate_listings(self) -> OrderRequestCreate:
@@ -54,7 +74,12 @@ class OrderRequestCreate(BaseModel):
 
 
 class OrderRequestUpdate(BaseModel):
-    note: str | None = Field(default=None, max_length=2000)
+    note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Nueva nota compartida. Un valor nulo elimina la nota existente.",
+        examples=["Aceptar también cartas Lightly Played."],
+    )
 
     @model_validator(mode="after")
     def require_note_field(self) -> OrderRequestUpdate:
@@ -67,8 +92,21 @@ class OrderRequestUpdate(BaseModel):
 class OrderRequestItemUpdate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    requested_quantity: int | None = Field(default=None, gt=0)
-    agreed_quantity: int | None = Field(default=None, ge=0)
+    requested_quantity: int | None = Field(
+        default=None,
+        gt=0,
+        description="Nueva cantidad solicitada. Si se omite, conserva el valor actual.",
+        examples=[3],
+    )
+    agreed_quantity: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Cantidad que se intentará comprar. No puede superar la solicitada; "
+            "si se omite, conserva el valor actual."
+        ),
+        examples=[2],
+    )
 
     @model_validator(mode="after")
     def require_non_null_update(self) -> OrderRequestItemUpdate:
@@ -84,9 +122,21 @@ class OrderRequestItemUpdate(BaseModel):
 class OrderRequestItemPricingUpdate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    card_unit_price: Decimal = Field(ge=0)
-    shipping_unit_price: Decimal = Field(ge=0)
-    tax_unit_price: Decimal = Field(ge=0)
+    card_unit_price: Decimal = Field(
+        ge=0,
+        description="Precio definitivo de una copia de la carta, en USD.",
+        examples=["3.50"],
+    )
+    shipping_unit_price: Decimal = Field(
+        ge=0,
+        description="Parte del envío asignada a una copia, en USD.",
+        examples=["0.75"],
+    )
+    tax_unit_price: Decimal = Field(
+        ge=0,
+        description="Parte de impuestos asignada a una copia, en USD.",
+        examples=["0.28"],
+    )
 
     @field_validator(
         "card_unit_price",
@@ -98,7 +148,11 @@ class OrderRequestItemPricingUpdate(BaseModel):
     def normalize_money(cls, value: Decimal) -> Decimal:
         return quantize_usd(value)
 
-    @computed_field
+    @computed_field(
+        description=(
+            "Suma calculada en servidor de carta, envío e impuesto por cada copia."
+        )
+    )
     @property
     def final_unit_price(self) -> Decimal:
         return quantize_usd(
@@ -107,25 +161,51 @@ class OrderRequestItemPricingUpdate(BaseModel):
 
 
 class OrderRequestItemResponse(BaseModel):
-    id: int
-    card_listing_id: int
-    card_name: str
-    card_set: str
-    card_code: str
-    rarity: str
-    condition: str
-    estimated_unit_price: Decimal
-    requested_quantity: int
-    agreed_quantity: int
-    card_unit_price: Decimal | None = None
-    shipping_unit_price: Decimal | None = None
-    tax_unit_price: Decimal | None = None
-    removed_at: datetime | None = None
-    removed_by_user_id: int | None = None
-    date_added: datetime
-    date_updated: datetime | None = None
+    id: int = Field(description="Identificador del ítem dentro de la Orden.")
+    card_listing_id: int = Field(description="Publicación de carta seleccionada.")
+    card_name: str = Field(description="Nombre de la carta conservado como snapshot.")
+    card_set: str = Field(description="Set conservado como snapshot.")
+    card_code: str = Field(description="Código de carta conservado como snapshot.")
+    rarity: str = Field(description="Rareza conservada como snapshot.")
+    condition: str = Field(description="Condición conservada como snapshot.")
+    estimated_unit_price: Decimal = Field(
+        description="Precio unitario estimado al enviar la Orden, en USD."
+    )
+    requested_quantity: int = Field(description="Cantidad solicitada por el usuario.")
+    agreed_quantity: int = Field(
+        description="Cantidad acordada para intentar comprar."
+    )
+    card_unit_price: Decimal | None = Field(
+        default=None,
+        description="Precio definitivo de la carta en USD; nulo hasta su revisión.",
+    )
+    shipping_unit_price: Decimal | None = Field(
+        default=None,
+        description="Envío unitario en USD; nulo hasta su revisión.",
+    )
+    tax_unit_price: Decimal | None = Field(
+        default=None,
+        description="Impuesto unitario en USD; nulo hasta su revisión.",
+    )
+    removed_at: datetime | None = Field(
+        default=None,
+        description="Fecha con zona horaria del retiro lógico; nula si sigue activo.",
+    )
+    removed_by_user_id: int | None = Field(
+        default=None,
+        description="Usuario que retiró el ítem; nulo mientras siga activo.",
+    )
+    date_added: datetime = Field(description="Fecha de creación con zona horaria.")
+    date_updated: datetime | None = Field(
+        default=None,
+        description="Última actualización con zona horaria, si ocurrió.",
+    )
 
-    @computed_field
+    @computed_field(
+        description=(
+            "Precio unitario definitivo calculado; nulo mientras falte un componente."
+        )
+    )
     @property
     def final_unit_price(self) -> Decimal | None:
         prices = (
@@ -141,7 +221,11 @@ class OrderRequestItemResponse(BaseModel):
 
         return quantize_usd(total)
 
-    @computed_field
+    @computed_field(
+        description=(
+            "Total acordado del ítem; nulo si faltan precios o el ítem está retirado."
+        )
+    )
     @property
     def agreed_total(self) -> Decimal | None:
         if self.final_unit_price is None or self.removed_at is not None:
@@ -151,19 +235,87 @@ class OrderRequestItemResponse(BaseModel):
 
 
 class OrderRequestResponse(BaseModel):
-    id: int
-    order_period_id: int
-    created_by_user_id: int
-    status: OrderRequestStatus
-    note: str | None = None
-    currency: str = "USD"
-    cancelled_at: datetime | None = None
-    cancelled_by_user_id: int | None = None
-    items: list[OrderRequestItemResponse]
-    date_added: datetime
-    date_updated: datetime | None = None
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": 41,
+                    "orderPeriodId": 12,
+                    "createdByUserId": 7,
+                    "status": "submitted",
+                    "note": "Priorizar cartas en condición Near Mint.",
+                    "currency": "USD",
+                    "cancelledAt": None,
+                    "cancelledByUserId": None,
+                    "items": [
+                        {
+                            "id": 93,
+                            "cardListingId": 145,
+                            "cardName": "Dark Magician",
+                            "cardSet": "Legend of Blue Eyes White Dragon",
+                            "cardCode": "LOB-005",
+                            "rarity": "Ultra Rare",
+                            "condition": "Near Mint",
+                            "estimatedUnitPrice": "3.50",
+                            "requestedQuantity": 2,
+                            "agreedQuantity": 0,
+                            "cardUnitPrice": None,
+                            "shippingUnitPrice": None,
+                            "taxUnitPrice": None,
+                            "removedAt": None,
+                            "removedByUserId": None,
+                            "dateAdded": "2026-08-03T15:30:00Z",
+                            "dateUpdated": None,
+                            "finalUnitPrice": None,
+                            "agreedTotal": None,
+                        }
+                    ],
+                    "dateAdded": "2026-08-03T15:30:00Z",
+                    "dateUpdated": None,
+                    "agreedTotal": None,
+                }
+            ]
+        }
+    }
 
-    @computed_field
+    id: int = Field(description="Identificador de la Orden.")
+    order_period_id: int = Field(description="Pedido al que pertenece la Orden.")
+    created_by_user_id: int = Field(description="Usuario propietario de la Orden.")
+    status: OrderRequestStatus = Field(
+        description="Estado actual de revisión de la Orden."
+    )
+    note: str | None = Field(
+        default=None,
+        description="Nota compartida; nula cuando no se ha registrado una.",
+    )
+    currency: str = Field(
+        default="USD",
+        description="Moneda ISO 4217 usada por todos los importes de la Orden.",
+        examples=["USD"],
+    )
+    cancelled_at: datetime | None = Field(
+        default=None,
+        description="Fecha con zona horaria de cancelación; nula si no está cancelada.",
+    )
+    cancelled_by_user_id: int | None = Field(
+        default=None,
+        description="Usuario que canceló la Orden; nulo si no está cancelada.",
+    )
+    items: list[OrderRequestItemResponse] = Field(
+        description="Ítems activos y retirados que preservan sus snapshots."
+    )
+    date_added: datetime = Field(description="Fecha de envío con zona horaria.")
+    date_updated: datetime | None = Field(
+        default=None,
+        description="Última actualización con zona horaria, si ocurrió.",
+    )
+
+    @computed_field(
+        description=(
+            "Suma de ítems activos con precios completos; nula si todavía no puede "
+            "calcularse."
+        )
+    )
     @property
     def agreed_total(self) -> Decimal | None:
         active_items = [item for item in self.items if item.removed_at is None]
@@ -177,25 +329,28 @@ class OrderRequestResponse(BaseModel):
         return quantize_usd(order_total)
 
 
-class OrderRequestListResponse(BaseModel):
-    items: list[OrderRequestResponse]
-    total: int
+class OrderRequestListResponse(PaginatedResponse[OrderRequestResponse]):
+    pass
 
 
 class OrderRequestHistoryChange(BaseModel):
-    field: str
-    old_value: object | None = None
-    new_value: object | None = None
+    field: str = Field(description="Campo de negocio que cambió.")
+    old_value: object | None = Field(
+        default=None, description="Valor anterior serializable."
+    )
+    new_value: object | None = Field(
+        default=None, description="Valor nuevo serializable."
+    )
 
 
 class OrderRequestHistoryResponse(BaseModel):
-    id: int
-    order_request_id: int
-    event: OrderRequestEventType
-    actor_user_id: int
-    occurred_at: datetime
-    changes: list[OrderRequestHistoryChange]
-
-
-class OrderRequestErrorResponse(BaseModel):
-    detail: str
+    id: int = Field(description="Identificador del evento.")
+    order_request_id: int = Field(description="Orden afectada.")
+    event: OrderRequestEventType = Field(description="Tipo de evento registrado.")
+    actor_user_id: int = Field(description="Usuario que produjo el evento.")
+    occurred_at: datetime = Field(
+        description="Fecha del evento con zona horaria."
+    )
+    changes: list[OrderRequestHistoryChange] = Field(
+        description="Cambios estructurados registrados por el evento."
+    )
