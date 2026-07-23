@@ -59,3 +59,9 @@ class OrderRequestItemCannotBeAdded:
 @dataclass(frozen=True, slots=True)
 class OrderRequestItemCannotBeRestored:
     status: OrderRequestStatus
+
+
+@dataclass(frozen=True, slots=True)
+class OrderRequestInvalidQuantities:
+    requested_quantity: int
+    agreed_quantity: int

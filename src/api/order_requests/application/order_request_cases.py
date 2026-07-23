@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from src.api.cards.repository import dao_card_listings as listing_dao
 from src.api.order_periods.domain import (
@@ -21,6 +21,7 @@ from src.api.order_requests.domain import (
     OrderRequestItemAlreadyExists,
     OrderRequestItemCannotBeAdded,
     OrderRequestItemCannotBeRestored,
+    OrderRequestInvalidQuantities,
     OrderRequestItemCreate,
     OrderRequestItemNotFound,
     OrderRequestItemPricingUpdate,
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
 
     from src.api.cards.repository import CardListing
     from src.api.order_requests.repository import OrderRequest
+    from src.api.order_periods.repository import OrderPeriod
 
 
 type CreateOrderRequestError = (
@@ -73,6 +75,7 @@ type MutateOrderRequestItemError = (
     MutateOrderRequestError
     | OrderRequestItemNotFound
     | OrderRequestItemCannotBeRestored
+    | OrderRequestInvalidQuantities
 )
 type ReviewOrderRequestError = (
     OrderRequestAccessDenied
@@ -109,6 +112,12 @@ def _change(field: str, old_value: object, new_value: object) -> dict[str, objec
     }
 
 
+def _response(request: OrderRequest) -> OrderRequestResponse:
+    response = OrderRequestResponse.model_validate(request)
+    response.items = [item for item in response.items if item.removed_at is None]
+    return response
+
+
 async def _get_locked_for_write(
     db: AsyncSession,
     actor: Actor,
@@ -127,6 +136,7 @@ async def _get_locked_for_write(
     if request is Empty:
         return Err(OrderRequestNotFound(order_request_id))
 
+    request = cast(OrderRequest, request)
     decision = can_access_order_request(
         actor,
         owner_user_id=request.created_by_user_id,
@@ -210,6 +220,7 @@ async def create(
     if period is Empty:
         return Err(OrderPeriodNotFound(request_in.order_period_id))
 
+    period = cast(OrderPeriod, period)
     now = datetime_now()
     period_status = resolve_order_period_status(
         period.opens_at,
@@ -260,7 +271,7 @@ async def create(
         await db.rollback()
         raise
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def get_one(
@@ -281,6 +292,7 @@ async def get_one(
     if request is Empty:
         return Err(OrderRequestNotFound(order_request_id))
 
+    request = cast("OrderRequest", request)
     decision = can_access_order_request(
         actor,
         owner_user_id=request.created_by_user_id,
@@ -290,7 +302,7 @@ async def get_one(
     if decision is not AuthorizationDecision.ALLOW:
         return Err(OrderRequestNotFound(order_request_id))
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def get_multi(
@@ -316,7 +328,7 @@ async def get_multi(
         status=status,
     )
 
-    return Ok((requests, total))
+    return Ok(([_response(request) for request in requests], total))
 
 
 async def get_history(
@@ -365,7 +377,7 @@ async def update_note(
         return Err(edit_error)
 
     if request.note == request_in.note:
-        return Ok(request)
+        return Ok(_response(request))
 
     old_note = request.note
     request.note = request_in.note
@@ -377,7 +389,7 @@ async def update_note(
         changes=[_change("note", old_note, request.note)],
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def add_item(
@@ -431,7 +443,7 @@ async def add_item(
         await db.rollback()
         raise
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def update_item(
@@ -461,6 +473,19 @@ async def update_item(
 
     changes: list[dict[str, object]] = []
     updates = item_in.model_dump(exclude_unset=True)
+    requested_quantity = updates.get(
+        "requested_quantity",
+        item.requested_quantity,
+    )
+    agreed_quantity = updates.get("agreed_quantity", item.agreed_quantity)
+
+    if agreed_quantity > requested_quantity:
+        return Err(
+            OrderRequestInvalidQuantities(
+                requested_quantity=requested_quantity,
+                agreed_quantity=agreed_quantity,
+            )
+        )
 
     for field, public_field in (
         ("requested_quantity", "requestedQuantity"),
@@ -477,7 +502,7 @@ async def update_item(
             changes.append(_change(public_field, old_value, new_value))
 
     if not changes:
-        return Ok(request)
+        return Ok(_response(request))
 
     await _commit_mutation(
         db,
@@ -487,7 +512,7 @@ async def update_item(
         changes=changes,
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def remove_item(
@@ -515,7 +540,7 @@ async def remove_item(
         return Err(OrderRequestItemNotFound(request.id, item_id))
 
     if item.removed_at is not None:
-        return Ok(request)
+        return Ok(_response(request))
 
     now = datetime_now()
     item.removed_at = now
@@ -547,7 +572,7 @@ async def remove_item(
         extra_history=extra_history,
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def restore_item(
@@ -576,7 +601,7 @@ async def restore_item(
         return Err(OrderRequestItemCannotBeRestored(status))
 
     if item.removed_at is None:
-        return Ok(request)
+        return Ok(_response(request))
 
     old_removed_at = item.removed_at
     old_removed_by = item.removed_by_user_id
@@ -593,7 +618,7 @@ async def restore_item(
         ],
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def _change_review_status(
@@ -640,7 +665,7 @@ async def _change_review_status(
         changes=changes,
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def start_review(
@@ -701,7 +726,7 @@ async def accept(
         ],
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def reject(
@@ -785,7 +810,7 @@ async def cancel(
         ],
     )
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def update_pricing(
@@ -828,7 +853,7 @@ async def update_pricing(
             changes.append(_change(public_field, old_value, new_value))
 
     if not changes:
-        return Ok(request)
+        return Ok(_response(request))
 
     await _commit_mutation(
         db,
@@ -838,4 +863,4 @@ async def update_pricing(
         changes=changes,
     )
 
-    return Ok(request)
+    return Ok(_response(request))

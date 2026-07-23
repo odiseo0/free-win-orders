@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from pydantic import BaseModel
 from sqlalchemy import false, select
 
 from src.api.order_periods.domain import (
@@ -11,28 +12,13 @@ from src.api.order_periods.domain import (
     OrderPeriodUpdate,
 )
 from src.core.db import DAO
-from src.core.utils.utils import Empty, EmptyType
-
-from .models import OrderPeriod
+from .models import OrderPeriod, OrderPeriodHistory
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class OrderPeriodDAO(DAO[OrderPeriod, OrderPeriodCreate, OrderPeriodUpdate]):
-    async def get_for_update(
-        self,
-        db: AsyncSession,
-        order_period_id: int,
-    ) -> OrderPeriod | EmptyType:
-        statement = (
-            select(self.model)
-            .where(self.model.id == order_period_id)
-            .with_for_update()
-        )
-        period = (await db.execute(statement)).scalar_one_or_none()
-        return period if period is not None else Empty
-
     async def get_multi(
         self,
         db: AsyncSession,
@@ -63,9 +49,24 @@ class OrderPeriodDAO(DAO[OrderPeriod, OrderPeriodCreate, OrderPeriodUpdate]):
         return list(periods), total
 
 
-class OrderPeriodHistoryDAO:
-    pass
+class OrderPeriodHistoryDAO(DAO[OrderPeriodHistory, BaseModel, BaseModel]):
+    async def get_for_period(
+        self,
+        db: AsyncSession,
+        order_period_id: int,
+        *,
+        page: int,
+        shows: int,
+    ) -> list[OrderPeriodHistory]:
+        statement = (
+            select(self.model)
+            .where(self.model.order_period_id == order_period_id)
+            .order_by(self.model.occurred_at.desc())
+            .offset(page)
+            .limit(shows)
+        )
+        return list((await db.execute(statement)).scalars().all())
 
 
-dao_order_period_histories = OrderPeriodHistoryDAO()
+dao_order_period_histories = OrderPeriodHistoryDAO(OrderPeriodHistory)
 dao_order_periods = OrderPeriodDAO(OrderPeriod)

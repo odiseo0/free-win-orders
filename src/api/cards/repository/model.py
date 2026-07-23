@@ -38,8 +38,17 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
         autoincrement=True,
         primary_key=True,
     )
-    card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("cards.id"))
-    ygo_id: Mapped[int] = mapped_column(BigInteger)
+    card_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("cards.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+    )
+    ygo_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        default=None,
+        nullable=True,
+    )
     ygo_set: Mapped[str]
     name: Mapped[str] = mapped_column(String(255))
     code: Mapped[str]
@@ -48,6 +57,6 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
     condition: Mapped[str]
     stock: Mapped[int] = mapped_column(default=0)
 
-    card: Mapped["Card"] = relationship(
-        "Card", innerjoin=True, lazy="joined", init=False
+    card: Mapped["Card | None"] = relationship(
+        "Card", lazy="selectin", init=False
     )

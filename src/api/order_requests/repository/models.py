@@ -28,6 +28,14 @@ class OrderRequest(MappedAsDataclass, Base, Date, kw_only=True):
             name="valid_status",
         ),
         CheckConstraint("currency = 'USD'", name="valid_currency"),
+        CheckConstraint(
+            "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
+            name="consistent_cancelled_status",
+        ),
+        CheckConstraint(
+            "(cancelled_at IS NULL) = (cancelled_by_user_id IS NULL)",
+            name="consistent_cancellation_audit",
+        ),
         Index("ix_order_requests_order_period_id", "order_period_id"),
         Index("ix_order_requests_created_by_user_id", "created_by_user_id"),
         Index("ix_order_requests_status", "status"),
@@ -87,6 +95,10 @@ class OrderRequestItem(MappedAsDataclass, Base, Date, kw_only=True):
             name="non_negative_agreed_quantity",
         ),
         CheckConstraint(
+            "agreed_quantity <= requested_quantity",
+            name="agreed_quantity_not_above_requested",
+        ),
+        CheckConstraint(
             "estimated_unit_price >= 0",
             name="non_negative_estimated_unit_price",
         ),
@@ -95,6 +107,10 @@ class OrderRequestItem(MappedAsDataclass, Base, Date, kw_only=True):
             "(shipping_unit_price IS NULL OR shipping_unit_price >= 0) AND "
             "(tax_unit_price IS NULL OR tax_unit_price >= 0)",
             name="non_negative_final_prices",
+        ),
+        CheckConstraint(
+            "(removed_at IS NULL) = (removed_by_user_id IS NULL)",
+            name="consistent_removal_audit",
         ),
         Index("ix_order_request_items_order_request_id", "order_request_id"),
         Index("ix_order_request_items_card_listing_id", "card_listing_id"),

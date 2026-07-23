@@ -133,9 +133,14 @@ async def remove(
         if assignments:
             return Err(RoleIsAssigned(role_id))
 
-        await dao_user_roles.delete(db, bridge, commit=False)
+    try:
+        if bridge is not Empty:
+            await dao_user_roles.delete(db, bridge, commit=False)
 
-    await dao_roles.delete(db, role)
+        await dao_roles.delete(db, role)
+    except DAOIntegrityError:
+        await db.rollback()
+        return Err(RoleIsAssigned(role_id))
 
     return Ok(None)
 

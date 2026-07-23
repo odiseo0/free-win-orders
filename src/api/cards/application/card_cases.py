@@ -98,6 +98,7 @@ async def create(
         response,
         ttl_seconds=CARD_CACHE_TTL_SECONDS,
     )
+
     return Ok(response)
 
 
@@ -138,4 +139,5 @@ async def remove(
     await dao.delete(db, db_object=card)
     await cache.delete(_card_key(card_id))
     await cache.delete_prefix(f"{CARD_CACHE_PREFIX}list:")
+
     return Ok(None)

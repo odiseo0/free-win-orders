@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol
 
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -12,7 +13,7 @@ from src.api.order_requests.domain import (
     OrderRequestStatus,
     quantize_usd,
 )
-from src.core.db.dao import catch_sqlalchemy_exception
+from src.core.db import DAO
 from src.core.utils.utils import Empty, EmptyType, datetime_now
 
 from .models import OrderRequest, OrderRequestHistory, OrderRequestItem
@@ -31,35 +32,12 @@ class CardListingSnapshot(Protocol):
     price: Decimal
 
 
-class OrderRequestDAO:
-    async def get(
-        self,
-        db: AsyncSession,
-        order_request_id: int,
-    ) -> OrderRequest | EmptyType:
-        statement = (
-            select(OrderRequest)
-            .where(OrderRequest.id == order_request_id)
-            .options(selectinload(OrderRequest.items))
+class OrderRequestDAO(DAO[OrderRequest, BaseModel, BaseModel]):
+    def __init__(self) -> None:
+        super().__init__(
+            OrderRequest,
+            default_options=[("items", "selectinload")],
         )
-        result = (await db.execute(statement)).unique().scalar_one_or_none()
-
-        return result if result is not None else Empty
-
-    async def get_for_update(
-        self,
-        db: AsyncSession,
-        order_request_id: int,
-    ) -> OrderRequest | EmptyType:
-        statement = (
-            select(OrderRequest)
-            .where(OrderRequest.id == order_request_id)
-            .options(selectinload(OrderRequest.items))
-            .with_for_update()
-        )
-        result = (await db.execute(statement)).unique().scalar_one_or_none()
-
-        return result if result is not None else Empty
 
     async def get_multi(
         self,
@@ -109,19 +87,12 @@ class OrderRequestDAO:
             created_by_user_id=created_by_user_id,
             note=note,
         )
-        db.add(request)
-
-        with catch_sqlalchemy_exception():
-            await db.flush()
-
-        return request
-
-    async def flush(self, db: AsyncSession) -> None:
-        with catch_sqlalchemy_exception():
-            await db.flush()
+        return await self.add(db, request)
 
 
-class OrderRequestItemDAO:
+class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
+    def __init__(self) -> None:
+        super().__init__(OrderRequestItem)
     async def get_for_request(
         self,
         db: AsyncSession,
@@ -173,14 +144,12 @@ class OrderRequestItemDAO:
             requested_quantity=requested_quantity,
             agreed_quantity=requested_quantity,
         )
-        db.add(item)
+        return await self.add(db, item)
 
-        with catch_sqlalchemy_exception():
-            await db.flush()
 
-        return item
-
-class OrderRequestHistoryDAO:
+class OrderRequestHistoryDAO(DAO[OrderRequestHistory, BaseModel, BaseModel]):
+    def __init__(self) -> None:
+        super().__init__(OrderRequestHistory)
     async def get_for_request(
         self,
         db: AsyncSession,
@@ -216,12 +185,7 @@ class OrderRequestHistoryDAO:
             occurred_at=occurred_at or datetime_now(),
             changes=changes,
         )
-        db.add(history)
-
-        with catch_sqlalchemy_exception():
-            await db.flush()
-
-        return history
+        return await self.add(db, history)
 
 
 dao_order_requests = OrderRequestDAO()

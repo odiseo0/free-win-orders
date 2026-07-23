@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Never
+from typing import TYPE_CHECKING, Any, Never, cast
 
 from src.api.order_periods.domain import (
     OrderPeriodAlreadyClosed,
@@ -17,6 +17,7 @@ from src.api.order_periods.domain import (
 )
 from src.api.order_periods.repository import dao_order_period_histories as history_dao
 from src.api.order_periods.repository import dao_order_periods as dao
+from src.api.order_periods.repository import OrderPeriodHistory
 from src.api.roles.domain import Actor, PermissionCode
 from src.core import Err, Ok, Result
 from src.core.db import DAOError
@@ -24,8 +25,7 @@ from src.core.utils.utils import Empty, datetime_now
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from src.api.order_periods.repository import OrderPeriod, OrderPeriodHistory
+    from src.api.order_periods.repository import OrderPeriod
 
 
 type OrderPeriodMutationError = (
@@ -49,7 +49,7 @@ def _serialized_change(field: str, old: object, new: object) -> dict[str, object
 
 def _effective_update(
     period: OrderPeriod, period_in: OrderPeriodUpdate
-) -> tuple[dict[str, object], list[dict[str, object]]]:
+) -> tuple[dict[str, datetime | Any], list[dict[str, datetime | Any]]]:
     values: dict[str, object] = {}
     changes: list[dict[str, object]] = []
     public_names = {
@@ -121,18 +121,21 @@ async def create(
     try:
         period = await dao.create(
             db,
-            name=period_in.name,
-            opens_at=period_in.opens_at,
-            closes_at=period_in.closes_at,
-            created_by_user_id=actor.user_id,
+            obj_in={
+                **period_in.model_dump(mode="python"),
+                "created_by_user_id": actor.user_id,
+            },
+            commit=False,
         )
-        await history_dao.create(
+        await history_dao.add(
             db,
-            order_period_id=period.id,
-            event=OrderPeriodEventType.CREATED,
-            actor_user_id=actor.user_id,
-            occurred_at=now,
-            changes=[],
+            OrderPeriodHistory(
+                order_period_id=period.id,
+                event=OrderPeriodEventType.CREATED,
+                actor_user_id=actor.user_id,
+                occurred_at=now,
+                changes=[],
+            ),
         )
         await db.commit()
     except DAOError:
@@ -154,6 +157,7 @@ async def update(
     if period is Empty:
         return Err(OrderPeriodNotFound(order_period_id))
 
+    period = cast("OrderPeriod", period)
     status = resolve_order_period_status(period.opens_at, period.closes_at, now)
 
     if status is OrderPeriodStatus.CLOSED:
@@ -169,6 +173,7 @@ async def update(
             if field in values:
                 return Err(OrderPeriodImmutableField(field))
 
+    period = cast("OrderPeriod", period)
     opens_at = values.get("opens_at", period.opens_at)
     closes_at = values.get("closes_at", period.closes_at)
 
@@ -176,14 +181,21 @@ async def update(
         return Err(OrderPeriodDateConflict())
 
     try:
-        updated = await dao.update(db, period, values)
-        await history_dao.create(
+        updated = await dao.update(
             db,
-            order_period_id=order_period_id,
-            event=OrderPeriodEventType.UPDATED,
-            actor_user_id=actor.user_id,
-            occurred_at=now,
-            changes=changes,
+            period.id,
+            values,
+            commit=False,
+        )
+        await history_dao.add(
+            db,
+            OrderPeriodHistory(
+                order_period_id=order_period_id,
+                event=OrderPeriodEventType.UPDATED,
+                actor_user_id=actor.user_id,
+                occurred_at=now,
+                changes=changes,
+            ),
         )
         await db.commit()
     except DAOError:
@@ -207,6 +219,7 @@ async def close(
     if period is Empty:
         return Err(OrderPeriodNotFound(order_period_id))
 
+    period = cast("OrderPeriod", period)
     status = resolve_order_period_status(period.opens_at, period.closes_at, now)
 
     if status is OrderPeriodStatus.DRAFT:
@@ -217,14 +230,21 @@ async def close(
     changes = [_serialized_change("closesAt", period.closes_at, now)]
 
     try:
-        updated = await dao.update(db, period, {"closes_at": now})
-        await history_dao.create(
+        updated = await dao.update(
             db,
-            order_period_id=order_period_id,
-            event=OrderPeriodEventType.CLOSED_EARLY,
-            actor_user_id=actor.user_id,
-            occurred_at=now,
-            changes=changes,
+            period.id,
+            {"closes_at": now},
+            commit=False,
+        )
+        await history_dao.add(
+            db,
+            OrderPeriodHistory(
+                order_period_id=order_period_id,
+                event=OrderPeriodEventType.CLOSED_EARLY,
+                actor_user_id=actor.user_id,
+                occurred_at=now,
+                changes=changes,
+            ),
         )
         await db.commit()
     except DAOError:

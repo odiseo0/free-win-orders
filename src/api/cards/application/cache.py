@@ -25,7 +25,7 @@ async def get_cached_model(
 async def set_cached_model(
     cache: Cache,
     key: str,
-    value: Model,
+    value: BaseModel,
     *,
     ttl_seconds: int,
 ) -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Never
+from typing import TYPE_CHECKING, Any, Never, cast
 
 from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdate
 from src.api.roles.domain import SystemRoleIsImmutable
@@ -30,7 +30,7 @@ async def get_multi(
     page: int = 1,
     shows: int | None = None,
     filters: dict[str, Any] | None = None,
-    order_by: OrderBy | list[str, Any] = None,
+    order_by: OrderBy | list[tuple[str, bool]] | None = None,
     complex_filters: list[FilterTypes] | None = None,
 ) -> Result[tuple[list[UserRole], int], Never]:
     data, count = await dao.get_multi(
@@ -38,7 +38,7 @@ async def get_multi(
         page=(page - 1) * (shows or 20),
         shows=shows,
         where=filters,
-        ordering=order_by or ["id", True],
+        ordering=order_by or [("id", True)],
         complex_filters=complex_filters,
     )
 
@@ -60,6 +60,9 @@ async def update(
 
     if user_role is Empty:
         return Err(UserRoleNotFound(user_role_id))
+
+    user_role = cast(UserRole, user_role)
+
     if user_role.role.is_system:
         return Err(SystemRoleIsImmutable(user_role.role_id))
 
@@ -75,6 +78,9 @@ async def remove(
 
     if user_role is Empty:
         return Err(UserRoleNotFound(user_role_id))
+
+    user_role = cast(UserRole, user_role)
+
     if user_role.role.is_system:
         return Err(SystemRoleIsImmutable(user_role.role_id))
 

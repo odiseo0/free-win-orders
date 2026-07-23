@@ -2,32 +2,35 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
+
+from pydantic import Field
 
 from src.core.schema import BaseModel
 
 
 class Card(BaseModel):
     ygo_id: int | None = None
-    sets: dict[str, object] | None = None
+    sets: dict[str, Any] | None = None
     card_type: str | None = None
     race: str | None = None
     name: str | None = None
     text: str | None = None
     attribute: str | None = None
-    prices: dict[str, object] | None = None
-    images: dict[str, object] | None = None
+    prices: dict[str, Any] | None = None
+    images: dict[str, Any] | None = None
 
 
 class CardCreate(Card):
-    ygo_id: int
-    sets: dict[str, object]
-    card_type: str
-    race: str
-    name: str
-    text: str
-    attribute: str
-    prices: dict[str, object]
-    images: dict[str, object]
+    ygo_id: int = Field(default=...)
+    sets: dict[str, Any] = Field(default=...)
+    card_type: str = Field(default=...)
+    race: str = Field(default=...)
+    name: str = Field(default=...)
+    text: str = Field(default=...)
+    attribute: str = Field(default=...)
+    prices: dict[str, Any] = Field(default=...)
+    images: dict[str, Any] = Field(default=...)
 
 
 class CardUpdate(Card):

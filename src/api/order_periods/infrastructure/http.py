@@ -41,14 +41,14 @@ async def _get_visible_period(
 
     match result:
         case Ok(period):
+            period_status = resolve_order_period_status(
+                period.opens_at,
+                period.closes_at,
+                datetime_now(),
+            )
             decision = can_read_order_period(
                 actor,
-                is_draft=resolve_order_period_status(
-                    period.opens_at,
-                    period.closes_at,
-                    datetime_now(),
-                )
-                is OrderPeriodStatus.DRAFT,
+                is_draft=period_status is OrderPeriodStatus.DRAFT,
             )
 
             if decision is AuthorizationDecision.HIDDEN:
