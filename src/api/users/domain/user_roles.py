@@ -1,12 +1,14 @@
-from src.core.schema import BaseModel
+from pydantic import Field
+
+from src.core.schema import BaseModel, PaginatedResponse
 
 
 class UserRole(BaseModel):
-    role_id: int | None = None
+    role_id: int | None = Field(default=None, description="Rol asociado.")
 
 
 class UserRoleCreate(UserRole):
-    role_id: int
+    role_id: int = Field(description="Rol asociado.")
 
 
 class UserRoleUpdate(UserRole):
@@ -14,4 +16,8 @@ class UserRoleUpdate(UserRole):
 
 
 class UserRoleResponse(UserRole):
-    id: int
+    id: int = Field(description="Identificador del puente heredado.")
+
+
+class UserRoleListResponse(PaginatedResponse[UserRoleResponse]):
+    pass

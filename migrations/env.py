@@ -79,6 +79,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def do_run_migrations_async(connectable: Connectable) -> None:
+    print(type(connectable))
     async with connectable.connect() as conn:
         await conn.run_sync(do_run_migrations)
 

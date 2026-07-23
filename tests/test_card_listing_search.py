@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.api.cards.application import card_listing_cases
-from src.api.cards.domain import CardListingResponse
+from src.api.cards.domain import CardListingListResponse, CardListingResponse
 from src.core import Ok
 from src.core.services.cache import InMemoryCache
 from src.core.services.scraper.transformers import CardListing
@@ -73,6 +73,31 @@ class PersistedListingDAO:
                 date_updated=None,
             )
         ]
+
+
+class PaginatedListingDAO:
+    def __init__(self) -> None:
+        self.reads = 0
+
+    async def get_multi(self, db: object, **kwargs: object) -> tuple[list[object], int]:
+        self.reads += 1
+        return (
+            [
+                CardListingResponse(
+                    id=7,
+                    card_id=3,
+                    ygo_id=89631139,
+                    ygo_set="Legend of Blue Eyes White Dragon",
+                    name="Blue-Eyes White Dragon",
+                    code="LOB-001",
+                    price=Decimal("18.50"),
+                    rarity="Ultra Rare",
+                    condition="Played",
+                    stock=1,
+                )
+            ],
+            12,
+        )
 
 
 @pytest.mark.anyio
@@ -147,3 +172,27 @@ async def test_search_prefers_database_results_over_scraper(
     assert result.value[0].id == 7
     assert result.value[0].price == Decimal("18.50")
     assert scraper.searches == 0
+
+
+@pytest.mark.anyio
+async def test_listings_cache_items_and_total(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dao = PaginatedListingDAO()
+    cache = InMemoryCache()
+    monkeypatch.setattr(card_listing_cases, "dao", dao)
+
+    first = await card_listing_cases.get_multi(
+        object(), cache, page=2, shows=10
+    )
+    second = await card_listing_cases.get_multi(
+        object(), cache, page=2, shows=10
+    )
+
+    assert isinstance(first, Ok)
+    assert first.value == CardListingListResponse(
+        items=first.value.items,
+        total=12,
+    )
+    assert second == first
+    assert dao.reads == 1

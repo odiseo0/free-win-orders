@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Never
 
-from src.api.cards.domain import CardCreate, CardNotFound, CardResponse, CardUpdate
+from src.api.cards.domain import (
+    CardCreate,
+    CardListResponse,
+    CardNotFound,
+    CardResponse,
+    CardUpdate,
+)
 from src.api.cards.repository import dao_cards as dao
 from src.core import Err, Ok, Result
 from src.core.services.cache import Cache
@@ -10,9 +16,7 @@ from src.core.utils.utils import Empty
 
 from .cache import (
     get_cached_model,
-    get_cached_models,
     set_cached_model,
-    set_cached_models,
 )
 
 if TYPE_CHECKING:
@@ -59,21 +63,24 @@ async def get_multi(
     *,
     page: int = 1,
     shows: int = 100,
-) -> Result[list[CardResponse], Never]:
+) -> Result[CardListResponse, Never]:
     key = f"{CARD_CACHE_PREFIX}list:{page}:{shows}"
-    cached = await get_cached_models(cache, key, CardResponse)
+    cached = await get_cached_model(cache, key, CardListResponse)
 
     if cached is not None:
         return Ok(cached)
 
-    cards, _ = await dao.get_multi(
+    cards, total = await dao.get_multi(
         db,
         page=(page - 1) * shows,
         shows=shows,
         ordering=[("name", False)],
     )
-    response = [CardResponse.model_validate(card) for card in cards]
-    await set_cached_models(
+    response = CardListResponse(
+        items=[CardResponse.model_validate(card) for card in cards],
+        total=total,
+    )
+    await set_cached_model(
         cache,
         key,
         response,

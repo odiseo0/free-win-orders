@@ -6,23 +6,29 @@ from .permissions import PermissionCode
 
 
 class PermissionResponse(BaseModel):
-    id: int
-    code: PermissionCode
-    description: str
+    id: int = Field(description="Identificador interno del permiso.")
+    code: PermissionCode = Field(
+        description="Código estable que expresa recurso, acción y alcance."
+    )
+    description: str = Field(description="Explicación del permiso.")
 
 
 class PermissionCreate(BaseModel):
-    code: PermissionCode
-    description: str
+    code: PermissionCode = Field(description="Código estable del permiso.")
+    description: str = Field(description="Explicación del permiso.")
 
 
 class PermissionUpdate(BaseModel):
-    description: str | None = None
+    description: str | None = Field(
+        default=None, description="Nueva explicación del permiso."
+    )
 
 
 class RoleBase(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(description="Nombre único del rol.")
+    description: str | None = Field(
+        default=None, description="Explicación opcional del rol."
+    )
 
 
 class RoleCreate(RoleBase):
@@ -30,15 +36,26 @@ class RoleCreate(RoleBase):
 
 
 class RoleUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, description="Nuevo nombre del rol.")
+    description: str | None = Field(
+        default=None, description="Nueva explicación del rol."
+    )
 
 
 class RoleResponse(RoleBase):
-    id: int
-    is_system: bool
-    permissions: list[PermissionResponse] = Field(default_factory=list)
+    id: int = Field(description="Identificador interno del rol.")
+    is_system: bool = Field(
+        description=(
+            "Indica si Free Win administra el rol como inmutable y no eliminable."
+        )
+    )
+    permissions: list[PermissionResponse] = Field(
+        default_factory=list,
+        description="Permisos efectivos asignados al rol.",
+    )
 
 
 class RolePermissionsUpdate(BaseModel):
-    permissions: list[PermissionCode]
+    permissions: list[PermissionCode] = Field(
+        description="Conjunto completo de códigos que sustituirá la asignación actual."
+    )

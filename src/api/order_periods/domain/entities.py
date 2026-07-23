@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.core.schema import BaseModel
+from src.core.schema import BaseModel, PaginatedResponse
 from src.core.utils.utils import datetime_now
 
 
@@ -29,9 +29,25 @@ def _require_aware_datetime(value: datetime) -> datetime:
 
 
 class OrderPeriodCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    opens_at: datetime
-    closes_at: datetime
+    name: str = Field(
+        min_length=1,
+        max_length=255,
+        description="Nombre público que identifica el Pedido.",
+        examples=["Pedido agosto 2026"],
+    )
+    opens_at: datetime = Field(
+        description=(
+            "Fecha de apertura con zona horaria. Antes de esta fecha el Pedido "
+            "permanece en borrador."
+        ),
+        examples=["2026-08-01T12:00:00Z"],
+    )
+    closes_at: datetime = Field(
+        description=(
+            "Fecha de cierre con zona horaria, posterior a la apertura."
+        ),
+        examples=["2026-08-22T12:00:00Z"],
+    )
 
     _validate_opens_at = field_validator("opens_at")(_require_aware_datetime)
     _validate_closes_at = field_validator("closes_at")(_require_aware_datetime)
@@ -45,9 +61,29 @@ class OrderPeriodCreate(BaseModel):
 
 
 class OrderPeriodUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    opens_at: datetime | None = None
-    closes_at: datetime | None = None
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="Nuevo nombre. Si se omite, conserva el valor actual.",
+        examples=["Pedido agosto 2026 — extensión"],
+    )
+    opens_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Nueva apertura con zona horaria. Solo puede cambiar mientras la regla "
+            "temporal del Pedido lo permita."
+        ),
+        examples=["2026-08-02T12:00:00Z"],
+    )
+    closes_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Nuevo cierre con zona horaria. No puede enviarse como nulo ni ser "
+            "anterior a la apertura."
+        ),
+        examples=["2026-08-29T12:00:00Z"],
+    )
 
     @field_validator("opens_at", "closes_at")
     @classmethod
@@ -66,15 +102,41 @@ class OrderPeriodUpdate(BaseModel):
 
 
 class OrderPeriodResponse(BaseModel):
-    id: int
-    name: str
-    opens_at: datetime
-    closes_at: datetime
-    created_by_user_id: int
-    date_added: datetime
-    date_updated: datetime | None = None
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": 12,
+                    "name": "Pedido agosto 2026",
+                    "opensAt": "2026-08-01T12:00:00Z",
+                    "closesAt": "2026-08-22T12:00:00Z",
+                    "createdByUserId": 3,
+                    "dateAdded": "2026-07-25T18:00:00Z",
+                    "dateUpdated": None,
+                    "status": "open",
+                }
+            ]
+        }
+    }
 
-    @computed_field
+    id: int = Field(description="Identificador del Pedido.")
+    name: str = Field(description="Nombre público del Pedido.")
+    opens_at: datetime = Field(description="Fecha de apertura con zona horaria.")
+    closes_at: datetime = Field(description="Fecha de cierre con zona horaria.")
+    created_by_user_id: int = Field(
+        description="Usuario administrador que creó el Pedido."
+    )
+    date_added: datetime = Field(description="Fecha de creación con zona horaria.")
+    date_updated: datetime | None = Field(
+        default=None,
+        description="Última actualización con zona horaria, si ocurrió.",
+    )
+
+    @computed_field(
+        description=(
+            "Estado calculado en servidor con las fechas del Pedido y la hora actual."
+        )
+    )
     @property
     def status(self) -> OrderPeriodStatus:
         from .rules import resolve_order_period_status
@@ -86,21 +148,28 @@ class OrderPeriodResponse(BaseModel):
         )
 
 
-class OrderPeriodListResponse(BaseModel):
-    items: list[OrderPeriodResponse]
-    total: int
+class OrderPeriodListResponse(PaginatedResponse[OrderPeriodResponse]):
+    pass
 
 
 class OrderPeriodHistoryChange(BaseModel):
-    field: str
-    old_value: object | None = None
-    new_value: object | None = None
+    field: str = Field(description="Campo de negocio que cambió.")
+    old_value: object | None = Field(
+        default=None, description="Valor anterior serializable."
+    )
+    new_value: object | None = Field(
+        default=None, description="Valor nuevo serializable."
+    )
 
 
 class OrderPeriodHistoryResponse(BaseModel):
-    id: int
-    order_period_id: int
-    event: OrderPeriodEventType
-    actor_user_id: int
-    occurred_at: datetime
-    changes: list[OrderPeriodHistoryChange]
+    id: int = Field(description="Identificador del evento.")
+    order_period_id: int = Field(description="Pedido afectado.")
+    event: OrderPeriodEventType = Field(description="Tipo de evento registrado.")
+    actor_user_id: int = Field(description="Usuario que produjo el evento.")
+    occurred_at: datetime = Field(
+        description="Fecha del evento con zona horaria."
+    )
+    changes: list[OrderPeriodHistoryChange] = Field(
+        description="Cambios estructurados registrados por el evento."
+    )
