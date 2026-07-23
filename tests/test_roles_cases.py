@@ -173,6 +173,47 @@ async def test_delete_assigned_role_stops_before_repository_delete(
 
 
 @pytest.mark.anyio
+async def test_delete_role_translates_concurrent_assignment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    role = FakeRole(id=8)
+
+    class ConflictingRoleDAO:
+        async def get(self, db: object, role_id: int, *, options: object) -> FakeRole:
+            return role
+
+        async def delete(self, db: object, role: FakeRole) -> None:
+            raise DAOIntegrityError
+
+    class FakeUserRoleDAO:
+        async def get_by_role_id(self, db: object, role_id: int) -> FakeBridge:
+            return FakeBridge(id=3)
+
+        async def delete(
+            self,
+            db: object,
+            bridge: FakeBridge,
+            *,
+            commit: bool,
+        ) -> None:
+            return None
+
+    class FakeUserDAO:
+        async def count_by_role_bridge(self, db: object, bridge_id: int) -> int:
+            return 0
+
+    db = FakeDB()
+    monkeypatch.setattr(roles_cases, "dao_roles", ConflictingRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_user_roles", FakeUserRoleDAO())
+    monkeypatch.setattr(roles_cases, "dao_users", FakeUserDAO())
+
+    result = await roles_cases.remove(db, role.id)
+
+    assert result == Err(RoleIsAssigned(role.id))
+    assert db.rolled_back is True
+
+
+@pytest.mark.anyio
 async def test_replace_permissions_uses_catalog_and_association_daos(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

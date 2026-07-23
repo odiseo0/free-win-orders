@@ -49,7 +49,7 @@ def test_load_scraped_data_normalizes_rows_before_writing() -> None:
     assert store.card_rows == [
         {
             "name": "Blue-Eyes White Dragon - Legend of Blue Eyes White Dragon",
-            "set": "Legend of Blue Eyes White Dragon",
+            "ygo_set": "Legend of Blue Eyes White Dragon",
             "code": "LOB-001",
             "price": Decimal("19.99"),
             "rarity": "Ultra Rare",

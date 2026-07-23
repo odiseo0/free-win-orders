@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
+from typing import Generator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -40,7 +41,7 @@ async def client() -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture(autouse=True)
-def clear_dependency_overrides() -> AsyncIterator[None]:
+def clear_dependency_overrides() -> Generator[None]:
     yield
     app.dependency_overrides.clear()
 
@@ -284,6 +285,7 @@ async def test_draft_and_its_history_are_hidden_from_regular_users(
     path: str,
 ) -> None:
     authenticate(USER)
+    monkeypatch.setattr(order_period_http, "datetime_now", lambda: NOW)
 
     async def get_one(*args: object, **kwargs: object) -> object:
         return Ok(period_response(status=OrderPeriodStatus.DRAFT))

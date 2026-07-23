@@ -72,11 +72,19 @@ class RecordingHistoryDAO:
         self.created: list[dict[str, object]] = []
         self.fail = fail
 
-    async def create(self, db: object, **values: object) -> FakeHistory:
+    async def add(self, db: object, history: object) -> object:
         if self.fail:
             raise DAOError
+
+        values = {
+            "order_period_id": history.order_period_id,
+            "event": history.event,
+            "actor_user_id": history.actor_user_id,
+            "occurred_at": history.occurred_at,
+            "changes": history.changes,
+        }
         self.created.append(values)
-        return FakeHistory(id=len(self.created), **values)  # type: ignore[arg-type]
+        return history
 
     async def get_for_period(
         self, db: object, order_period_id: int, *, page: int, shows: int
@@ -108,11 +116,18 @@ class RecordingPeriodDAO:
         self.locked_ids: list[int] = []
         self.list_arguments: dict[str, object] | None = None
 
-    async def create(self, db: object, **values: object) -> FakePeriod:
+    async def create(
+        self,
+        db: object,
+        *,
+        obj_in: dict[str, object],
+        commit: bool,
+    ) -> FakePeriod:
         if self.fail_create:
             raise DAOError
-        self.created.append(values)
-        self.period = FakePeriod(**values)
+        assert commit is False
+        self.created.append(obj_in)
+        self.period = FakePeriod(**obj_in)
         return self.period
 
     async def get(self, db: object, order_period_id: int) -> FakePeriod | object:
@@ -125,13 +140,21 @@ class RecordingPeriodDAO:
         return self.period
 
     async def update(
-        self, db: object, period: FakePeriod, values: dict[str, object]
+        self,
+        db: object,
+        period_id: int,
+        values: dict[str, object],
+        *,
+        commit: bool,
     ) -> FakePeriod:
+        assert commit is False
+        assert isinstance(self.period, FakePeriod)
+        assert self.period.id == period_id
         self.updated.append(values)
         for key, value in values.items():
-            setattr(period, key, value)
-        period.date_updated = NOW
-        return period
+            setattr(self.period, key, value)
+        self.period.date_updated = NOW
+        return self.period
 
     async def get_multi(self, db: object, **kwargs: object) -> tuple[list[FakePeriod], int]:
         self.list_arguments = kwargs

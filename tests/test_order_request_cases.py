@@ -18,6 +18,7 @@ from src.api.order_requests.domain import (
     OrderRequestItemAlreadyExists,
     OrderRequestItemCannotBeAdded,
     OrderRequestItemCannotBeRestored,
+    OrderRequestInvalidQuantities,
     OrderRequestItemCreate,
     OrderRequestItemPricingUpdate,
     OrderRequestItemUpdate,
@@ -527,6 +528,30 @@ async def test_update_item_after_acceptance_keeps_status(
     assert request.status is OrderRequestStatus.ACCEPTED
     assert request.items[0].agreed_quantity == 1
     assert history_dao.created[-1]["event"] is OrderRequestEventType.ITEM_UPDATED
+
+
+@pytest.mark.anyio
+async def test_update_item_rejects_agreed_quantity_above_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = FakeRequest(items=[fake_item()])
+    install_daos(monkeypatch, request=request)
+
+    result = await order_request_cases.update_item(
+        FakeDB(),
+        USER,
+        request.id,
+        request.items[0].id,
+        OrderRequestItemUpdate(agreed_quantity=3),
+    )
+
+    assert result == Err(
+        OrderRequestInvalidQuantities(
+            requested_quantity=2,
+            agreed_quantity=3,
+        )
+    )
+    assert request.items[0].agreed_quantity == 2
 
 
 @pytest.mark.anyio
