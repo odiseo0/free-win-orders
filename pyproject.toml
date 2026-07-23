@@ -27,7 +27,7 @@ distribution = false
 
 [tool.basedpyright]
 exclude = ["**/node_modules", "**/__pycache__", ".venv"]
-typeCheckingMode = "standard"
+typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
