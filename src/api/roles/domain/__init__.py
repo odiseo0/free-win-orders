@@ -1,6 +1,6 @@
 from .entities import (
-    PermissionResponse,
     PermissionCreate,
+    PermissionResponse,
     PermissionUpdate,
     RoleCreate,
     RolePermissionsUpdate,
@@ -14,7 +14,7 @@ from .errors import (
     SystemRoleIsImmutable,
     UserNotFoundForPromotion,
 )
-from .permissions import PermissionCode, USER_PERMISSIONS
+from .permissions import USER_PERMISSIONS, PermissionCode
 from .policies import (
     Actor,
     AuthorizationDecision,

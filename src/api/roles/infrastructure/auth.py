@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,9 @@ from src.api.roles.repository import dao_authorization
 from src.core.db import get_db
 from src.core.utils.utils import Empty
 from src.settings.auth_settings import auth_settings
+
+if TYPE_CHECKING:
+    from src.api.roles.repository.dao import ActorRecord
 
 
 async def get_current_user(db: Annotated[AsyncSession, Depends(get_db)]) -> Actor:
@@ -33,6 +36,7 @@ async def get_current_user(db: Annotated[AsyncSession, Depends(get_db)]) -> Acto
             detail="La identidad local no existe",
         )
 
+    actor_record = cast("ActorRecord", actor_record)
     permissions = frozenset(
         PermissionCode(code) for code in actor_record.permission_codes
     )

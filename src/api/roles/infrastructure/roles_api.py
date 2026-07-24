@@ -62,10 +62,7 @@ _ROLE_CONFLICT_RESPONSE = {
 }
 
 type RoleError = (
-    RoleNotFound
-    | RoleNameAlreadyExists
-    | SystemRoleIsImmutable
-    | RoleIsAssigned
+    RoleNotFound | RoleNameAlreadyExists | SystemRoleIsImmutable | RoleIsAssigned
 )
 
 
@@ -287,7 +284,9 @@ async def set_role_permissions(
     ),
     responses=_AUTH_RESPONSES,
 )
-async def read_permissions(db: Annotated[AsyncSession, Depends(get_db)]) -> list[PermissionResponse]:
+async def read_permissions(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[PermissionResponse]:
     result = await get_permissions(db)
 
     match result:

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import Field
 
 from src.core.schema import BaseModel, PaginatedResponse
@@ -26,14 +28,16 @@ class UserAddress(BaseModel):
 
 
 class UserAddressCreate(UserAddress):
-    user_id: int = Field(default=..., description="Usuario propietario de la dirección.")
+    user_id: int = Field(
+        default=..., description="Usuario propietario de la dirección."
+    )
     name: str = Field(default=..., description="Nombre reconocible para la dirección.")
     state: str = Field(default=..., description="Estado o región.")
     city: str = Field(default=..., description="Ciudad.")
     address: str = Field(default=..., description="Dirección principal.")
     zip_code: str = Field(default=..., description="Código postal.")
 
-    model_config = {**BaseModel.model_config, "extra": "forbid"}
+    model_config: ClassVar = {**BaseModel.model_config, "extra": "forbid"}
 
 
 class UserAddressUpdate(UserAddress):

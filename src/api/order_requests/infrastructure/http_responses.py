@@ -9,11 +9,11 @@ from src.api.order_requests.domain import (
     OrderRequestAccessDenied,
     OrderRequestCannotAccept,
     OrderRequestCardListingNotFound,
+    OrderRequestInvalidQuantities,
     OrderRequestInvalidTransition,
     OrderRequestItemAlreadyExists,
     OrderRequestItemCannotBeAdded,
     OrderRequestItemCannotBeRestored,
-    OrderRequestInvalidQuantities,
     OrderRequestItemNotFound,
     OrderRequestNotEditable,
     OrderRequestNotFound,
@@ -78,9 +78,7 @@ CREATE_ORDER_REQUEST_RESPONSES: dict[int, dict[str, Any]] = {
                     },
                     "listing": {
                         "summary": "Publicación inexistente",
-                        "value": {
-                            "detail": "La publicación de carta no existe"
-                        },
+                        "value": {"detail": "La publicación de carta no existe"},
                     },
                 }
             }
@@ -91,9 +89,7 @@ CREATE_ORDER_REQUEST_RESPONSES: dict[int, dict[str, Any]] = {
         "description": "El Pedido no está abierto para recibir Órdenes.",
         "content": {
             "application/json": {
-                "example": {
-                    "detail": "El Pedido no está abierto para recibir Órdenes"
-                }
+                "example": {"detail": "El Pedido no está abierto para recibir Órdenes"}
             }
         },
     },
@@ -125,11 +121,13 @@ ACCEPT_ORDER_REQUEST_RESPONSES: dict[int, dict[str, Any]] = {
     409: _ACCEPT_CONFLICT_RESPONSE,
 }
 
+
 def _raise_request_not_found() -> None:
     raise HTTPException(
         status_code=http_status.HTTP_404_NOT_FOUND,
         detail="La Orden no existe",
     )
+
 
 def _raise_mutation_error(error: object) -> None:
     match error:

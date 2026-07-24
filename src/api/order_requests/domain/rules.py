@@ -4,7 +4,6 @@ from src.api.roles.domain import Actor, AuthorizationDecision, PermissionCode
 
 from .entities import OrderRequestStatus
 
-
 type PriceComponents = tuple[Decimal | None, Decimal | None, Decimal | None]
 
 
@@ -84,4 +83,3 @@ def can_access_order_request(
         return AuthorizationDecision.ALLOW
 
     return AuthorizationDecision.HIDDEN
-

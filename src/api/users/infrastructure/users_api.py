@@ -3,6 +3,17 @@ from typing import Annotated, assert_never
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.roles.domain import (
+    Actor,
+    PermissionCode,
+    RoleNotFound,
+    require_owner_or_permission,
+)
+from src.api.roles.infrastructure.auth import (
+    enforce_decision,
+    get_current_user,
+    require_actor,
+)
 from src.api.users.application.users_cases import (
     assign_role,
     create,
@@ -19,13 +30,6 @@ from src.api.users.domain.users import (
     UserRoleAssignment,
     UserUpdate,
 )
-from src.api.roles.domain import (
-    Actor,
-    PermissionCode,
-    RoleNotFound,
-    require_owner_or_permission,
-)
-from src.api.roles.infrastructure.auth import enforce_decision, get_current_user, require_actor
 from src.core import Err, Ok
 from src.core.db import get_db
 from src.core.schema import (
@@ -205,9 +209,7 @@ async def update_user(
     response_model=None,
     operation_id="deleteUser",
     summary="Eliminar un usuario",
-    description=(
-        "Elimina un usuario con permiso global y responde sin cuerpo."
-    ),
+    description=("Elimina un usuario con permiso global y responde sin cuerpo."),
     responses={
         **_AUTH_RESPONSES,
         404: _USER_NOT_FOUND_RESPONSE,

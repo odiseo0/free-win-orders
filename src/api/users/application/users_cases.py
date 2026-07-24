@@ -3,17 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Never, cast
 
 from src.api.roles.domain import RoleNotFound
+from src.api.roles.repository.models import UserRole
 from src.api.users.domain import UserCreate, UserNotFound, UserUpdate
 from src.api.users.repository import User
-from src.api.users.repository import dao_users as dao
 from src.api.users.repository import dao_user_roles as role_dao
+from src.api.users.repository import dao_users as dao
 from src.core import Err, Ok, Result
 from src.core.utils.filters import FilterTypes, OrderBy
 from src.core.utils.utils import Empty
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-    from src.api.roles.repository.models import UserRole
 
 
 async def get_one(db: AsyncSession, user_id: int) -> Result[User, UserNotFound]:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
+from typing import ClassVar
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
@@ -90,7 +91,7 @@ class OrderRequestUpdate(BaseModel):
 
 
 class OrderRequestItemUpdate(BaseModel):
-    model_config = {"extra": "forbid"}
+    model_config: ClassVar = {"extra": "forbid"}
 
     requested_quantity: int | None = Field(
         default=None,
@@ -120,7 +121,7 @@ class OrderRequestItemUpdate(BaseModel):
 
 
 class OrderRequestItemPricingUpdate(BaseModel):
-    model_config = {"extra": "forbid"}
+    model_config: ClassVar = {"extra": "forbid"}
 
     card_unit_price: Decimal = Field(
         ge=0,
@@ -172,9 +173,7 @@ class OrderRequestItemResponse(BaseModel):
         description="Precio unitario estimado al enviar la Orden, en USD."
     )
     requested_quantity: int = Field(description="Cantidad solicitada por el usuario.")
-    agreed_quantity: int = Field(
-        description="Cantidad acordada para intentar comprar."
-    )
+    agreed_quantity: int = Field(description="Cantidad acordada para intentar comprar.")
     card_unit_price: Decimal | None = Field(
         default=None,
         description="Precio definitivo de la carta en USD; nulo hasta su revisión.",
@@ -235,7 +234,7 @@ class OrderRequestItemResponse(BaseModel):
 
 
 class OrderRequestResponse(BaseModel):
-    model_config = {
+    model_config: ClassVar = {
         "json_schema_extra": {
             "examples": [
                 {
@@ -348,9 +347,7 @@ class OrderRequestHistoryResponse(BaseModel):
     order_request_id: int = Field(description="Orden afectada.")
     event: OrderRequestEventType = Field(description="Tipo de evento registrado.")
     actor_user_id: int = Field(description="Usuario que produjo el evento.")
-    occurred_at: datetime = Field(
-        description="Fecha del evento con zona horaria."
-    )
+    occurred_at: datetime = Field(description="Fecha del evento con zona horaria.")
     changes: list[OrderRequestHistoryChange] = Field(
         description="Cambios estructurados registrados por el evento."
     )

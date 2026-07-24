@@ -23,8 +23,7 @@ from src.core.db import Base, Date
 class OrderRequest(MappedAsDataclass, Base, Date, kw_only=True):
     __table_args__ = (
         CheckConstraint(
-            "status IN ('submitted', 'in_review', 'accepted', 'rejected', "
-            "'cancelled')",
+            "status IN ('submitted', 'in_review', 'accepted', 'rejected', 'cancelled')",
             name="valid_status",
         ),
         CheckConstraint("currency = 'USD'", name="valid_currency"),

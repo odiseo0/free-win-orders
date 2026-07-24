@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import ClassVar
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
@@ -43,9 +44,7 @@ class OrderPeriodCreate(BaseModel):
         examples=["2026-08-01T12:00:00Z"],
     )
     closes_at: datetime = Field(
-        description=(
-            "Fecha de cierre con zona horaria, posterior a la apertura."
-        ),
+        description=("Fecha de cierre con zona horaria, posterior a la apertura."),
         examples=["2026-08-22T12:00:00Z"],
     )
 
@@ -102,7 +101,7 @@ class OrderPeriodUpdate(BaseModel):
 
 
 class OrderPeriodResponse(BaseModel):
-    model_config = {
+    model_config: ClassVar = {
         "json_schema_extra": {
             "examples": [
                 {
@@ -167,9 +166,7 @@ class OrderPeriodHistoryResponse(BaseModel):
     order_period_id: int = Field(description="Pedido afectado.")
     event: OrderPeriodEventType = Field(description="Tipo de evento registrado.")
     actor_user_id: int = Field(description="Usuario que produjo el evento.")
-    occurred_at: datetime = Field(
-        description="Fecha del evento con zona horaria."
-    )
+    occurred_at: datetime = Field(description="Fecha del evento con zona horaria.")
     changes: list[OrderPeriodHistoryChange] = Field(
         description="Cambios estructurados registrados por el evento."
     )

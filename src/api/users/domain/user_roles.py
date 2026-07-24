@@ -8,7 +8,7 @@ class UserRole(BaseModel):
 
 
 class UserRoleCreate(UserRole):
-    role_id: int = Field(description="Rol asociado.")
+    role_id: int = Field(default=..., description="Rol asociado.")
 
 
 class UserRoleUpdate(UserRole):

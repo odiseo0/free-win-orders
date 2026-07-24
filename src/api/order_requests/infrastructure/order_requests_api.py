@@ -27,16 +27,17 @@ from src.api.roles.domain import Actor, PermissionCode
 from src.api.roles.infrastructure.auth import get_current_user, require_actor
 from src.core import Err, Ok
 from src.core.db import get_db
+
 from .http_responses import (
+    _FORBIDDEN_RESPONSE,
+    _REQUEST_NOT_FOUND_RESPONSE,
+    _UNAUTHORIZED_RESPONSE,
+    _VALIDATION_RESPONSE,
     ACCEPT_ORDER_REQUEST_RESPONSES,
     ADD_ITEM_RESPONSES,
     CREATE_ORDER_REQUEST_RESPONSES,
     ITEM_ACTION_RESPONSES,
     ORDER_ACTION_RESPONSES,
-    _FORBIDDEN_RESPONSE,
-    _REQUEST_NOT_FOUND_RESPONSE,
-    _UNAUTHORIZED_RESPONSE,
-    _VALIDATION_RESPONSE,
     _raise_mutation_error,
     _raise_request_not_found,
 )
@@ -51,6 +52,7 @@ type OrderRequestItemId = Annotated[
     int,
     Path(gt=0, description="Identificador positivo del ítem dentro de la Orden."),
 ]
+
 
 @router.post(
     "/",
@@ -205,9 +207,7 @@ async def remove_order_request_item(
     order_request_id: OrderRequestId,
     item_id: OrderRequestItemId,
 ) -> OrderRequestResponse:
-    result = await order_request_cases.remove_item(
-        db, actor, order_request_id, item_id
-    )
+    result = await order_request_cases.remove_item(db, actor, order_request_id, item_id)
 
     match result:
         case Ok(request):

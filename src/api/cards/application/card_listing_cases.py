@@ -102,9 +102,7 @@ async def get_multi(
         ordering=[("price", False)],
     )
     response = CardListingListResponse(
-        items=[
-            CardListingResponse.model_validate(listing) for listing in listings
-        ],
+        items=[CardListingResponse.model_validate(listing) for listing in listings],
         total=total,
     )
     await set_cached_model(

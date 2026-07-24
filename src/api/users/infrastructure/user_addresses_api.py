@@ -3,6 +3,13 @@ from typing import Annotated, assert_never
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.roles.domain import (
+    Actor,
+    PermissionCode,
+    require_owner_or_permission,
+    require_permission,
+)
+from src.api.roles.infrastructure.auth import enforce_decision, get_current_user
 from src.api.users.application.user_address_cases import (
     create,
     get_multi,
@@ -17,13 +24,6 @@ from src.api.users.domain import (
     UserAddressResponse,
     UserAddressUpdate,
 )
-from src.api.roles.domain import (
-    Actor,
-    PermissionCode,
-    require_owner_or_permission,
-    require_permission,
-)
-from src.api.roles.infrastructure.auth import enforce_decision, get_current_user
 from src.core import Err, Ok
 from src.core.db import get_db
 from src.core.schema import (

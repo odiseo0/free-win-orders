@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import Field
 
 from src.core.schema import BaseModel, PaginatedResponse
@@ -39,7 +41,7 @@ class UserCreate(User):
         json_schema_extra={"writeOnly": True},
     )
 
-    model_config = {**BaseModel.model_config, "extra": "forbid"}
+    model_config: ClassVar = {**BaseModel.model_config, "extra": "forbid"}
 
 
 class UserUpdate(User):

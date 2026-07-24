@@ -15,9 +15,9 @@ from src.api.order_periods.domain import (
     OrderPeriodUpdate,
     resolve_order_period_status,
 )
+from src.api.order_periods.repository import OrderPeriodHistory
 from src.api.order_periods.repository import dao_order_period_histories as history_dao
 from src.api.order_periods.repository import dao_order_periods as dao
-from src.api.order_periods.repository import OrderPeriodHistory
 from src.api.roles.domain import Actor, PermissionCode
 from src.core import Err, Ok, Result
 from src.core.db import DAOError
@@ -25,6 +25,7 @@ from src.core.utils.utils import Empty, datetime_now
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
     from src.api.order_periods.repository import OrderPeriod
 
 

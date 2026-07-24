@@ -98,6 +98,7 @@ async def update(
 
     if role is Empty:
         return Err(RoleNotFound(role_id))
+
     if role.is_system:
         return Err(SystemRoleIsImmutable(role_id))
 
@@ -122,6 +123,7 @@ async def remove(
 
     if role is Empty:
         return Err(RoleNotFound(role_id))
+
     if role.is_system:
         return Err(SystemRoleIsImmutable(role_id))
 
@@ -152,6 +154,7 @@ async def replace_permissions(
 
     if role is Empty:
         return Err(RoleNotFound(role_id))
+
     if role.is_system:
         return Err(SystemRoleIsImmutable(role_id))
 

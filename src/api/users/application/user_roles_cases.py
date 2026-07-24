@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Never, cast
 
-from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdate
 from src.api.roles.domain import SystemRoleIsImmutable
+from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdate
 from src.api.users.repository import UserRole
 from src.api.users.repository import dao_user_roles as dao
 from src.core import Err, Ok, Result

@@ -3,6 +3,8 @@ from typing import Annotated, assert_never
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.roles.domain import Actor, PermissionCode, SystemRoleIsImmutable
+from src.api.roles.infrastructure.auth import require_actor
 from src.api.users.application.user_roles_cases import (
     create,
     get_multi,
@@ -19,8 +21,6 @@ from src.api.users.domain import (
 )
 from src.core import Err, Ok
 from src.core.db import get_db
-from src.api.roles.domain import Actor, PermissionCode, SystemRoleIsImmutable
-from src.api.roles.infrastructure.auth import require_actor
 
 router = APIRouter(tags=["user-roles"], deprecated=True)
 

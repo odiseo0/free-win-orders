@@ -9,10 +9,10 @@ from src.core.services.cache import Cache
 Model = TypeVar("Model", bound=BaseModel)
 
 
-async def get_cached_model(
+async def get_cached_model[Model](
     cache: Cache,
     key: str,
-    model: type[Model],
+    model: BaseModel,
 ) -> Model | None:
     value = await cache.get(key)
 
@@ -32,10 +32,10 @@ async def set_cached_model(
     await cache.set(key, value.model_dump_json(), ttl_seconds=ttl_seconds)
 
 
-async def get_cached_models(
+async def get_cached_models[Model](
     cache: Cache,
     key: str,
-    model: type[Model],
+    model: BaseModel,
 ) -> list[Model] | None:
     value = await cache.get(key)
 
@@ -46,10 +46,10 @@ async def get_cached_models(
     return [model.model_validate(item) for item in payload]
 
 
-async def set_cached_models(
+async def set_cached_models[Model](
     cache: Cache,
     key: str,
-    values: Sequence[Model],
+    values: Sequence[BaseModel],
     *,
     ttl_seconds: int,
 ) -> None:

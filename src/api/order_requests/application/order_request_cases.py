@@ -17,11 +17,11 @@ from src.api.order_requests.domain import (
     OrderRequestCreate,
     OrderRequestEventType,
     OrderRequestHistoryResponse,
+    OrderRequestInvalidQuantities,
     OrderRequestInvalidTransition,
     OrderRequestItemAlreadyExists,
     OrderRequestItemCannotBeAdded,
     OrderRequestItemCannotBeRestored,
-    OrderRequestInvalidQuantities,
     OrderRequestItemCreate,
     OrderRequestItemNotFound,
     OrderRequestItemPricingUpdate,
@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from src.api.cards.repository import CardListing
-    from src.api.order_requests.repository import OrderRequest
     from src.api.order_periods.repository import OrderPeriod
+    from src.api.order_requests.repository import OrderRequest
 
 
 type CreateOrderRequestError = (
