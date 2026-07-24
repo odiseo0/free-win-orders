@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Never, cast
 
 from src.api.roles.domain import RoleNotFound
-from src.api.roles.repository.models import UserRole
 from src.api.users.domain import UserCreate, UserNotFound, UserUpdate
 from src.api.users.repository import User
 from src.api.users.repository import dao_user_roles as role_dao
@@ -51,7 +50,6 @@ async def create(db: AsyncSession, obj_in: UserCreate) -> Result[User, Never]:
     if bridge is Empty:
         raise RuntimeError("El rol de sistema User no está inicializado")
 
-    bridge = cast(UserRole, bridge)
     data = obj_in.model_dump(mode="python")
     data["role_id"] = bridge.id
     user = await dao.create(db, obj_in=data)
@@ -72,7 +70,6 @@ async def assign_role(
     if bridge is Empty:
         return Err(RoleNotFound(role_id))
 
-    bridge = cast(UserRole, bridge)
     updated_user = await dao.update(db, user_id, {"role_id": bridge.id})
 
     return Ok(updated_user)

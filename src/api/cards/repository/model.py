@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, ForeignKey, String, UniqueConstraint
+from sqlalchemy import BigInteger, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
@@ -21,7 +21,7 @@ class Card(MappedAsDataclass, Base, Date, kw_only=True):
     card_type: Mapped[str]
     race: Mapped[str]
     name: Mapped[str] = mapped_column(String(255))
-    text: Mapped[str] = mapped_column(String(255))
+    text: Mapped[str] = mapped_column(Text)
     attribute: Mapped[str]
     prices: Mapped[dict] = mapped_column(JSONB)
     images: Mapped[dict] = mapped_column(JSONB)
@@ -57,6 +57,4 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
     condition: Mapped[str]
     stock: Mapped[int] = mapped_column(default=0)
 
-    card: Mapped["Card | None"] = relationship(
-        "Card", lazy="selectin", init=False
-    )
+    card: Mapped["Card | None"] = relationship("Card", lazy="selectin", init=False)
