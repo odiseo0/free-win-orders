@@ -22,7 +22,7 @@ class Card(MappedAsDataclass, Base, Date, kw_only=True):
     race: Mapped[str]
     name: Mapped[str] = mapped_column(String(255))
     text: Mapped[str] = mapped_column(Text)
-    attribute: Mapped[str]
+    attribute: Mapped[str | None]
     prices: Mapped[dict] = mapped_column(JSONB)
     images: Mapped[dict] = mapped_column(JSONB)
 
@@ -57,4 +57,4 @@ class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
     condition: Mapped[str]
     stock: Mapped[int] = mapped_column(default=0)
 
-    card: Mapped["Card | None"] = relationship("Card", lazy="selectin", init=False)
+    card: Mapped[Card | None] = relationship("Card", lazy="selectin", init=False)
