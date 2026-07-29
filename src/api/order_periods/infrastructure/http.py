@@ -65,9 +65,7 @@ _UPDATE_CONFLICT_RESPONSE = {
     "description": "El estado actual del Pedido no permite el cambio solicitado.",
     "content": {
         "application/json": {
-            "example": {
-                "detail": "El Pedido no admite ese cambio en su estado actual"
-            }
+            "example": {"detail": "El Pedido no admite ese cambio en su estado actual"}
         }
     },
 }
@@ -83,9 +81,7 @@ _CLOSE_CONFLICT_RESPONSE = {
                 },
                 "draft": {
                     "summary": "Pedido en borrador",
-                    "value": {
-                        "detail": "Un Pedido en borrador no se puede cerrar"
-                    },
+                    "value": {"detail": "Un Pedido en borrador no se puede cerrar"},
                 },
             }
         }
@@ -232,7 +228,6 @@ async def read_order_periods(
 )
 async def read_order_period_history(
     db: Annotated[AsyncSession, Depends(get_db)],
-    actor: Annotated[Actor, Depends(require_actor(PermissionCode.ORDER_PERIODS_READ))],
     order_period_id: OrderPeriodId,
     page: Annotated[
         int,

@@ -37,11 +37,11 @@ async def get_current_user(db: Annotated[AsyncSession, Depends(get_db)]) -> Acto
         )
 
     actor_record = cast("ActorRecord", actor_record)
-    permissions = frozenset(
-        PermissionCode(code) for code in actor_record.permission_codes
-    )
 
-    return Actor(user_id=actor_record.user_id, permissions=permissions)
+    return Actor(
+        user_id=actor_record.user_id,
+        permissions=frozenset(PermissionCode),
+    )
 
 
 def enforce_decision(decision: AuthorizationDecision) -> None:
@@ -62,8 +62,7 @@ def enforce_decision(decision: AuthorizationDecision) -> None:
 
 def require_actor(permission: PermissionCode) -> Callable[..., Actor]:
     async def dependency(actor: Annotated[Actor, Depends(get_current_user)]) -> Actor:
-        if auth_settings.mode != "local" or auth_settings.local_user_id is None:
-            enforce_decision(require_permission(actor, permission))
+        enforce_decision(require_permission(actor, permission))
 
         return actor
 

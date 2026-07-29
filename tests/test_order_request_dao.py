@@ -3,8 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.attributes import NO_VALUE
 
 from src.api.order_requests.domain import OrderRequestEventType, OrderRequestStatus
 from src.api.order_requests.repository import (
@@ -181,6 +183,21 @@ async def test_dao_creations_flush_without_committing() -> None:
     assert history.event == OrderRequestEventType.CREATED
     assert db.added == [request, history]
     assert db.flushes == 2
+
+
+@pytest.mark.anyio
+async def test_created_request_initializes_its_items_collection() -> None:
+    db = RecordingDB()
+
+    request = await OrderRequestDAO().create(
+        db,
+        order_period_id=4,
+        created_by_user_id=8,
+        note=None,
+    )
+
+    assert inspect(request).attrs["items"].loaded_value is not NO_VALUE
+    assert request.items == []
 
 
 @pytest.mark.anyio

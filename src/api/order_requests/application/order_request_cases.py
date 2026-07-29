@@ -271,7 +271,7 @@ async def create(
         await db.rollback()
         raise
 
-    return Ok(_response(request))
+    return Ok(request)
 
 
 async def get_one(
@@ -673,13 +673,15 @@ async def start_review(
     actor: Actor,
     order_request_id: int,
 ) -> Result[OrderRequestResponse, ReviewOrderRequestError]:
-    return await _change_review_status(
+    result = await _change_review_status(
         db,
         actor,
         order_request_id,
         target=OrderRequestStatus.IN_REVIEW,
         allowed_sources=frozenset({OrderRequestStatus.SUBMITTED}),
     )
+    print(result)
+    return result
 
 
 async def accept(

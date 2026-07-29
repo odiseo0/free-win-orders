@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 
 from src.api.roles.domain import Actor, AuthorizationDecision, PermissionCode
 from src.api.roles.infrastructure import auth
+from src.api.roles.repository.dao import ActorRecord
 
 
 @pytest.fixture
@@ -41,6 +42,25 @@ async def test_protected_identity_is_disabled_by_default(
         await auth.get_current_user(object())
 
     assert raised.value.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.anyio
+async def test_local_identity_receives_all_permissions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(auth.auth_settings, "mode", "local")
+    monkeypatch.setattr(auth.auth_settings, "local_user_id", 7)
+
+    async def get_actor(_: object, user_id: int) -> ActorRecord:
+        assert user_id == 7
+        return ActorRecord(user_id=7, permission_codes=frozenset())
+
+    monkeypatch.setattr(auth.dao_authorization, "get_actor", get_actor)
+
+    actor = await auth.get_current_user(object())
+
+    assert actor.user_id == 7
+    assert actor.permissions == frozenset(PermissionCode)
 
 
 @pytest.mark.anyio

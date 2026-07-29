@@ -223,7 +223,7 @@ Esos atributos no están definidos actualmente en `DBSettings`.
 - `AUTH_MODE`, cuyo valor por defecto es `disabled` y cuyo único modo activo actual es `local`;
 - `AUTH_LOCAL_USER_ID`, que identifica un usuario persistido cuando el modo es `local`.
 
-Los endpoints protegidos responden `401` si falta cualquiera de ambos valores o el usuario no existe. Esta configuración facilita desarrollo y pruebas, pero no sustituye autenticación, hashing, sesiones ni tokens.
+Los endpoints protegidos responden `401` si falta cualquiera de ambos valores o el usuario no existe. La identidad local recibe todos los permisos del catálogo para facilitar pruebas manuales, sin modificar el rol persistido del usuario. Esta configuración no sustituye autenticación, hashing, sesiones ni tokens.
 
 ## 8) Persistencia
 

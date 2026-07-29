@@ -69,6 +69,7 @@ class OrderRequest(MappedAsDataclass, Base, Date, kw_only=True):
     items: Mapped[list[OrderRequestItem]] = relationship(
         back_populates="order_request",
         cascade="all, delete-orphan",
+        default_factory=list,
         init=False,
     )
     history: Mapped[list[OrderRequestHistory]] = relationship(

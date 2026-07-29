@@ -157,7 +157,7 @@ La superficie HTTP registrada actualmente incluye:
 
 La raíz `/` devuelve un mensaje de bienvenida.
 
-Los endpoints protegidos no están disponibles de forma anónima. Durante el desarrollo puede configurarse temporalmente `AUTH_MODE=local` junto con `AUTH_LOCAL_USER_ID`; si falta cualquiera de los valores, responden `401`. El registro `POST /users` permanece público y siempre asigna el rol de sistema `User`.
+Los endpoints protegidos no están disponibles de forma anónima. Durante el desarrollo puede configurarse temporalmente `AUTH_MODE=local` junto con `AUTH_LOCAL_USER_ID`; si falta cualquiera de los valores, responden `401`. Esa identidad local recibe todos los permisos del catálogo para pruebas manuales, sin cambiar su rol persistido. El registro `POST /users` permanece público y siempre asigna el rol de sistema `User`.
 
 ### 6.2 Contrato HTTP normalizado
 
