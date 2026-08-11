@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 FREE_WIN_SEARCH_VERSION_TABLE = "free_win_search_alembic_version"
 EXTERNALLY_MANAGED_TABLES = frozenset(
     {

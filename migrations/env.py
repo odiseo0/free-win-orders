@@ -100,7 +100,6 @@ def run_migrations() -> None:
             ),
         )
     if isinstance(connectable, AsyncEngine):
-
         asyncio.run(do_run_migrations_async(connectable))
     else:
         do_run_migrations(connectable)
