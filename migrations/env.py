@@ -7,6 +7,7 @@ from sqlalchemy.engine import Connectable, Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 import migrations.models  # noqa: F401
+from migrations.ownership import include_name, include_object
 from src.core.db import Base
 from src.settings.db_settings import db_settings
 
@@ -54,6 +55,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_name=include_name,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -72,6 +75,8 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        include_name=include_name,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -79,7 +84,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def do_run_migrations_async(connectable: Connectable) -> None:
-    print(type(connectable))
     async with connectable.connect() as conn:
         await conn.run_sync(do_run_migrations)
 

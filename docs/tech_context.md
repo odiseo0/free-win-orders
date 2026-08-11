@@ -37,7 +37,7 @@ Este documento no cubre:
 | Caché | `InMemoryCache` local o Valkey mediante `valkey-py` async |
 | Scraper | Extracción async, transformación multiproceso y carga PostgreSQL |
 | Gestor del proyecto | PDM |
-| Migraciones | Alembic previsto, todavía no configurado |
+| Migraciones | Alembic con historial local y propiedad de tablas separada por servicio |
 | Frontend | Fuera del alcance de este repositorio |
 | Despliegue | Sin Dockerfile ni configuración de plataforma documentada |
 | Observabilidad | Sin stack estructurado de logs, métricas o tracing definido |
@@ -269,9 +269,21 @@ El engine utiliza `asyncpg` y configura el servidor con zona horaria `America/Ca
 
 ### 8.5 Migraciones
 
-Alembic está configurado en `migrations/`. La revisión inicial `20260722_01` crea el esquema completo actual, incluidas las tablas de Usuarios, Roles, Permisos, Cartas y Publicaciones, y puede aplicarse sobre una base vacía.
+Alembic está configurado en `migrations/`. Sus revisiones históricas se conservan
+sin modificaciones, incluida la revisión inicial `20260722_01` que permitía crear
+el esquema completo sobre una base vacía.
 
-**Restricción actual**: el esquema no debe considerarse gestionado para producción hasta que exista una historia de migraciones reproducible. La creación implícita de tablas no sustituye migraciones versionadas.
+La propiedad vigente del esquema está dividida entre servicios. `free-win-search`
+administra `cards`, `card_listings`, sus tablas operativas de scraping e indexado,
+y registra su historia en `free_win_search_alembic_version`. Este backend conserva
+la FK de `order_request_items.card_listing_id` y una proyección de solo lectura de
+`card_listings`, pero sus filtros de autogeneración excluyen todas las tablas del
+servicio de búsqueda. Por ello una revisión nueva de Free Win no debe crear,
+alterar ni eliminar esas tablas.
+
+La tabla `permissions` continúa compartida. Los códigos utilizados exclusivamente
+por el servicio de búsqueda pueden permanecer persistidos aunque no formen parte
+del Enum de permisos reconocido por esta aplicación.
 
 ## 9) Modelos y datos actuales
 
