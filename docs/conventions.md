@@ -265,7 +265,7 @@ Antes de integrar un endpoint nuevo, verifica:
 - **Required** las operaciones de base de datos, red y archivos dentro de rutas `async` deben usar APIs asíncronas.
 - **Required** no llames directamente SDKs síncronos o funciones bloqueantes desde el event loop.
 - **Recommended** si una dependencia síncrona es inevitable y realiza I/O, ejecútala con `starlette.concurrency.run_in_threadpool` en la frontera correspondiente.
-- **Recommended** limita explícitamente la concurrencia en operaciones masivas, como hace el scraper.
+- **Recommended** limita explícitamente la concurrencia en operaciones masivas.
 - **Required** configura timeouts para llamadas externas.
 
 ### 10.2 Trabajo intensivo en CPU
@@ -336,7 +336,7 @@ Corrige estos patrones cuando formen parte directa del cambio solicitado y sea p
 - `src/core/db/model.py`: base declarativa y convención de nombres de SQLAlchemy.
 - `src/core/db/dao.py`: operaciones genéricas de persistencia.
 - `src/core/schema/base.py`: configuración compartida de Pydantic.
-- `src/core/services/scraper/`: concurrencia e I/O externo asíncrono.
+- `src/core/services/cache/`: lifecycle e I/O asíncrono del proveedor de caché.
 - `docs/system_patterns.md`: patrones e interacciones del sistema.
 - `docs/testing.md`: estrategia de pruebas.
 - `docs/formatting.md`: formato de la documentación.

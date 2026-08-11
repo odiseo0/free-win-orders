@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from src.api.roles.domain import PermissionCode, RolePermissionsUpdate
+from src.api.roles.domain import (
+    PermissionCode,
+    PermissionResponse,
+    RolePermissionsUpdate,
+    RoleResponse,
+)
 from src.api.users.domain import UserCreate, UserResponse, UserUpdate
 
 
@@ -48,3 +53,20 @@ def test_permission_contract_accepts_controlled_codes() -> None:
         PermissionCode.USERS_READ_SELF,
         PermissionCode.ORDER_PERIODS_READ,
     ]
+
+
+def test_responses_accept_permissions_owned_by_another_service() -> None:
+    external_permission = PermissionResponse(
+        id=99,
+        code="cards.read",
+        description="Permite consultar cartas en free-win-search.",
+    )
+    role = RoleResponse(
+        id=3,
+        name="Search Reader",
+        description=None,
+        is_system=False,
+        permissions=[external_permission],
+    )
+
+    assert role.permissions[0].code == "cards.read"

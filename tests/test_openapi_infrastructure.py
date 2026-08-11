@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from pathlib import Path
 
 from src.application import app
 from src.core.schema import (
@@ -17,6 +18,34 @@ def test_openapi_generates_a_json_serializable_document() -> None:
     assert schema["info"]["title"] == "Free Win"
     assert schema["paths"]
     assert schema["components"]["schemas"]
+
+
+def test_exported_openapi_matches_the_application_contract() -> None:
+    exported_path = Path(__file__).parents[1] / "docs" / "openapi.json"
+
+    assert json.loads(exported_path.read_text(encoding="utf-8")) == app.openapi()
+
+
+def test_search_service_routes_and_schemas_are_not_exposed() -> None:
+    schema = app.openapi()
+    retired_schemas = {
+        "CardListResponse",
+        "CardListingListResponse",
+        "CardListingResponse",
+        "CardResponse",
+    }
+
+    assert not any(
+        path.startswith(("/cards", "/card-listings"))
+        for path in schema["paths"]
+    )
+    assert retired_schemas.isdisjoint(schema["components"]["schemas"])
+    assert {"cards", "card-listings"}.isdisjoint(
+        tag["name"] for tag in schema["tags"]
+    )
+    assert "cardListingId" in schema["components"]["schemas"][
+        "OrderRequestItemCreate"
+    ]["properties"]
 
 
 def test_openapi_operation_ids_are_unique() -> None:

@@ -2,7 +2,7 @@
 
 ## 1) Propósito
 
-Este documento define la estrategia de pruebas del backend de Free Win. Su objetivo es proporcionar confianza sobre el dominio, la API, la persistencia y el scraper sin depender de servicios externos ni de datos reales de la comunidad.
+Este documento define la estrategia de pruebas del backend de Free Win. Su objetivo es proporcionar confianza sobre el dominio, la API, la persistencia y los límites con otros servicios sin depender de infraestructura externa ni de datos reales de la comunidad.
 
 La estrategia debe crecer junto con el proyecto. Las reglas de esta guía distinguen las pruebas que existen actualmente de las expectativas para funcionalidad nueva.
 
@@ -12,7 +12,7 @@ Este documento cubre:
 
 - principios generales de pruebas;
 - estado actual de la suite;
-- pruebas unitarias, de API, persistencia y scraper;
+- pruebas unitarias, de API, persistencia y contratos entre servicios;
 - código asíncrono con pytest y AnyIO;
 - fixtures, fakes y reemplazo de dependencias;
 - pruebas manuales y protección de datos sensibles;
@@ -29,34 +29,21 @@ Este documento no cubre:
 
 ### 3.1 Cobertura existente
 
-La suite actual contiene:
+La suite cubre:
 
-- `tests/test_imports.py`: comprueba que la aplicación FastAPI pueda importarse;
-- `tests/test_scraper_transformers.py`: comprueba la transformación de una página HTML local en una publicación;
-- `tests/test_scraper_loader.py`: comprueba la normalización previa a la carga y el comportamiento de lotes vacíos.
-- `tests/test_cache.py`: comprueba la invalidación por prefijo del caché en memoria;
-- `tests/test_valkey_cache.py`: comprueba namespace, TTL, lectura, invalidación por lotes y cierre usando un cliente falso;
-- `tests/test_card_listing_search.py`: comprueba el fallback base de datos → scraper y la reutilización del resultado cacheado;
-- `tests/test_card_cases.py`: comprueba el error recuperable al consultar una Carta inexistente;
-- `tests/test_result.py`: comprueba las variantes inmutables del resultado tipado.
-- `tests/test_order_period_contracts.py` y `tests/test_order_period_rules.py`: comprueban contratos, zonas horarias y estados temporales de Pedidos;
-- `tests/test_order_period_cases.py`: comprueba coordinación, transacciones, historial y reglas de modificación de Pedidos;
-- `tests/test_order_period_authorization.py` y `tests/test_order_period_api.py`: comprueban permisos, visibilidad y contratos HTTP de Pedidos.
-- `tests/test_order_request_contracts.py`, `tests/test_order_request_rules.py` y `tests/test_order_request_authorization.py`: comprueban contratos, transiciones y permisos de Órdenes;
-- `tests/test_order_request_models.py` y `tests/test_order_request_dao.py`: comprueban metadata, restricciones y consultas de persistencia de Órdenes;
-- `tests/test_order_request_cases.py` y `tests/test_order_request_api.py`: comprueban transacciones, historial, errores recuperables y contratos HTTP de Órdenes;
-- `tests/test_order_request_flow.py`: recorre por HTTP la v1 completa con FastAPI y dependencias reemplazadas, incluyendo aislamiento entre propietarios.
+- importación de la aplicación y del registro de modelos Alembic;
+- contratos, casos de uso, autorización, persistencia y API de Pedidos;
+- contratos, reglas, flujo, snapshots, persistencia y API de Órdenes;
+- Usuarios, Direcciones, Roles, permisos y sus políticas de acceso;
+- contrato OpenAPI, `operationId`, aliases y respuestas normalizadas;
+- caché en memoria y Valkey mediante clientes falsos;
+- lectura de la proyección externa de `card_listings`;
+- filtros de Alembic que protegen las tablas de `free-win-search`;
+- variantes inmutables de `Result`.
 
-Estas pruebas cubren el arranque mínimo y partes de transformación/carga del scraper. Todavía no existe cobertura automatizada para:
-
-- endpoints de Usuarios, Direcciones o Roles;
-- casos de uso del componente `users`;
-- DAO genérico y DAOs específicos;
-- integración real con PostgreSQL;
-- configuración de entorno;
-- extracción HTTP del scraper;
-- endpoints HTTP de `cards` y el componente `collections`;
-- integración PostgreSQL de `order_periods` y sus migraciones.
+La suite no abre conexiones hacia `free-win-search`, Valkey o proveedores de
+cartas. Las integraciones reales con PostgreSQL y Valkey requieren recursos
+desechables y configuración explícita.
 
 ### 3.2 Patrón async actual
 
@@ -252,41 +239,19 @@ El código utiliza características específicas de PostgreSQL, como `asyncpg`, 
 - **Required** cada prueba debe aislar sus datos mediante transacción, rollback, esquema temporal o limpieza explícita.
 - **Recommended** no uses SQLite como sustituto silencioso cuando el comportamiento probado dependa de PostgreSQL.
 
-### 6.6 Scraper
+### 6.6 Límite con Publicaciones externas
 
-El scraper necesita pruebas por etapa.
+Las pruebas de Órdenes deben comprobar:
 
-**Extracción**:
+- lectura por ID de las columnas mínimas de `card_listings`;
+- `Empty` cuando la publicación no existe;
+- copia del snapshot antes de escribir la Orden;
+- ausencia de escrituras cuando falla la validación;
+- conservación de la FK hacia `card_listings.id`;
+- exclusión de todas las tablas de `free-win-search` durante autogeneración.
 
-- URL codificada correctamente;
-- respuesta exitosa;
-- respuesta 404;
-- otros errores HTTP;
-- timeout o error de red;
-- límite de concurrencia cuando se modifique esa lógica.
-
-**Transformación**:
-
-- estructura HTML principal;
-- selectores alternativos;
-- HTML vacío o inesperado;
-- publicación sin precio o código;
-- rareza, condición y stock ausentes;
-- deduplicación;
-- varias cartas y páginas inexistentes.
-
-**Carga**:
-
-- conversión de precio a `Decimal`;
-- precio `N/A`;
-- lote vacío;
-- cantidad reportada como cargada;
-- upsert por código y condición;
-- actualización de una publicación existente.
-
-- **Required** las pruebas unitarias del scraper usan HTML local y clientes falsos; nunca dependen de CoolStuffInc.
-- **Recommended** prueba directamente el parser síncrono cuando el objetivo sea la interpretación del HTML, evitando crear procesos sin necesidad.
-- **Recommended** reserva pruebas del `ProcessPoolExecutor` para comprobar la integración del transformador async.
+Estas pruebas usan sesiones falsas o metadata local. No dependen de que el servicio
+de búsqueda esté ejecutándose.
 
 ### 6.7 Configuración
 
@@ -300,19 +265,19 @@ Las pruebas de settings deben comprobar:
 
 Las pruebas que modifiquen variables de entorno deben usar mecanismos temporales de pytest y restaurar el estado al finalizar.
 
-### 6.8 Caché y búsqueda de publicaciones
+### 6.8 Caché
 
 Comprueba por separado:
 
-- hit de caché sin acceso posterior a base de datos o red;
-- miss de caché con resultados de PostgreSQL;
-- miss de caché y PostgreSQL con fallback al scraper;
-- almacenamiento de resultados externos y de listas vacías;
-- normalización de la consulta usada en la clave;
-- expiración e invalidación de claves;
-- que los tests nunca contacten Redis, Valkey ni el sitio externo sin una integración explícita.
+- hit, miss, expiración e invalidación por clave o prefijo;
+- namespace aplicado por el proveedor Valkey;
+- borrado mediante `SCAN` y lotes;
+- arranque y cierre del cliente;
+- ausencia de sockets en pruebas unitarias.
 
-Usa `InMemoryCache` o un fake del protocolo `Cache` en pruebas de aplicación. Las pruebas unitarias de `ValkeyCache` usan un cliente falso y nunca abren sockets. Una futura prueba de integración deberá usar una instancia Valkey desechable y no reemplaza las pruebas del orden de resolución del caso de uso.
+Usa `InMemoryCache` o un fake del protocolo `Cache` en pruebas de aplicación.
+Las pruebas unitarias de `ValkeyCache` usan un cliente falso. Una integración
+futura debe usar una instancia Valkey desechable.
 
 ## 7) Fixtures, fakes y datos
 
@@ -356,7 +321,7 @@ Usa esta plantilla:
 ```md
 ### Caso manual: <nombre>
 
-- **Área**: <API, persistencia, scraper>.
+- **Área**: <API, persistencia, integración externa>.
 - **Entorno**: <local o prueba>.
 - **Precondiciones**:
   - <configuración necesaria>.
@@ -392,13 +357,13 @@ pdm run pytest
 Para un archivo específico:
 
 ```bash
-pdm run pytest tests/test_scraper_loader.py
+pdm run pytest tests/test_order_request_cases.py
 ```
 
 Para un escenario específico:
 
 ```bash
-pdm run pytest tests/test_scraper_loader.py::test_load_scraped_data_skips_empty_batches
+pdm run pytest tests/test_order_request_cases.py::test_add_item_rejects_missing_listing_without_writing
 ```
 
 Para exportar el contrato que sirven Swagger UI y ReDoc:
@@ -463,15 +428,15 @@ Flujo recomendado:
 - `dependency_overrides` para sustituir `get_current_user` en pruebas HTTP.
 - fakes de DAO para demostrar que los casos de uso coordinan reglas y transacciones sin ejecutar consultas directamente.
 
-### 12.4 Scraper
+### 12.5 Límite con un servicio externo
 
-- etapa específica modificada;
-- entrada vacía o incompleta;
-- cambio de estructura HTML;
-- error de red cuando afecte extracción;
-- deduplicación o upsert cuando afecte identidad de datos.
+- proyección mínima y de solo lectura;
+- comportamiento cuando falta la referencia;
+- ausencia de escrituras parciales;
+- FK y metadata necesarias para persistencia;
+- filtros de migración que respetan al propietario externo.
 
-### 12.5 Corrección de error
+### 12.6 Corrección de error
 
 - prueba de regresión que falle con el comportamiento anterior;
 - prueba de casos cercanos cuando compartan la misma causa;
@@ -486,7 +451,7 @@ Se espera que:
 - toda regla de dominio nueva tenga pruebas;
 - las ramas de error relevantes estén cubiertas;
 - los contratos HTTP importantes se prueben desde la frontera;
-- el scraper tenga fixtures para estructuras conocidas y degradadas;
+- los límites con tablas externas tengan pruebas de ausencia y aislamiento;
 - los cambios PostgreSQL se validen contra PostgreSQL;
 - una exclusión de pruebas se explique de forma concreta.
 
@@ -500,7 +465,7 @@ La cobertura numérica podrá adoptarse cuando la suite tenga una base más ampl
 - **Contexto**: FastAPI y SQLAlchemy necesitan compartir un event loop coherente en pruebas async.
 - **Decisión**: las pruebas async nuevas usan `pytest.mark.anyio` con backend `asyncio`.
 - **Impacto**: no se duplica la suite bajo Trio y se evitan loops creados manualmente alrededor de fixtures async.
-- **Evidencia**: `ideas.md`, `src/application.py`, `src/core/db/`.
+- **Evidencia**: `tests/`, `src/application.py`, `src/core/db/`.
 - **Revisión**: reconsiderar si el proyecto adopta otro backend asíncrono.
 
 ### DEC-20260720-postgresql-integration-tests
@@ -509,20 +474,20 @@ La cobertura numérica podrá adoptarse cuando la suite tenga una base más ampl
 - **Contexto**: la persistencia usa asyncpg y operaciones específicas del dialecto PostgreSQL.
 - **Decisión**: las integraciones de persistencia se validan con PostgreSQL y no con SQLite como sustituto implícito.
 - **Impacto**: las pruebas de integración requieren una base desechable, pero reflejan el comportamiento real.
-- **Evidencia**: `src/core/db/`, `src/core/services/scraper/loader.py`.
+- **Evidencia**: `src/core/db/`, `migrations/ownership.py`.
 - **Revisión**: reconsiderar si se abstraen o eliminan todas las dependencias específicas del dialecto.
 
 ## 15) Referencias
 
 - `tests/test_imports.py`: importación mínima de la aplicación.
-- `tests/test_scraper_transformers.py`: integración async de transformación.
-- `tests/test_scraper_loader.py`: normalización y carga con store falso.
+- `tests/test_card_listing_reference_dao.py`: lectura de la proyección externa.
+- `tests/test_migration_ownership.py`: aislamiento de tablas externas en Alembic.
 - `src/application.py`: aplicación usada por el transporte ASGI.
 - `src/core/db/deps.py`: dependencia de sesión reemplazable.
 - `src/core/db/dao.py`: comportamiento genérico de persistencia.
 - `src/core/result.py`: unión tipada para errores recuperables.
 - `src/core/services/cache/`: contrato y proveedor temporal de caché.
-- `src/core/services/scraper/`: etapas del pipeline.
+- `src/api/order_requests/repository/card_listings.py`: frontera de lectura compartida.
 - `docs/conventions.md`: convenciones de implementación.
 - `docs/formatting.md`: formato de documentación y decisiones.
 
@@ -542,7 +507,7 @@ La cobertura numérica podrá adoptarse cuando la suite tenga una base más ampl
 - [ ] ¿Las pruebas async comparten el backend `asyncio`?
 - [ ] ¿Las pruebas de API usan ASGITransport y limpian overrides?
 - [ ] ¿Las integraciones usan una base PostgreSQL exclusiva para pruebas?
-- [ ] ¿Las pruebas del scraper evitan internet?
+- [ ] ¿Las pruebas del límite con `free-win-search` evitan servicios externos?
 - [ ] ¿Los datos y evidencias están sanitizados?
 - [ ] ¿Los cambios nuevos incluyen escenarios exitosos y de error relevantes?
 - [ ] ¿Las pruebas no ejecutadas se comunican claramente?

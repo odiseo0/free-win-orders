@@ -278,9 +278,9 @@ async def set_role_permissions(
     operation_id="listPermissions",
     summary="Listar permisos",
     description=(
-        "Devuelve el catálogo completo y no paginado de permisos reconocidos por el "
-        "backend. Cada código expresa el recurso, la acción y, cuando aplica, el "
-        "alcance propio o global."
+        "Devuelve la tabla compartida y no paginada de permisos. Puede incluir "
+        "códigos administrados por free-win-search que este backend conserva, pero "
+        "no acepta al configurar sus propios roles."
     ),
     responses=_AUTH_RESPONSES,
 )

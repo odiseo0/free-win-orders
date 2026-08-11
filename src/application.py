@@ -11,8 +11,8 @@ API_DESCRIPTION = """
 Free Win centraliza los **Pedidos** de cartas de Yu-Gi-Oh! difíciles de conseguir
 en el país y las **Órdenes** que los usuarios envían dentro de cada Pedido.
 
-La API permite consultar el catálogo de cartas, gestionar usuarios y permisos,
-abrir y administrar Pedidos, y revisar sus Órdenes.
+La API permite gestionar usuarios y permisos, abrir y administrar Pedidos, y
+revisar las Órdenes que referencian publicaciones del servicio de búsqueda.
 
 ## Autenticación temporal
 
@@ -44,7 +44,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "permissions",
-        "description": "Catálogo de permisos reconocidos por el backend.",
+        "description": "Tabla compartida de permisos usados por Free Win y sus servicios.",
     },
     {
         "name": "user-roles",

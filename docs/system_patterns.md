@@ -349,7 +349,7 @@ dao_user_addresses = UserAddressDAO(UserAddress)
 El componente Roles muestra el límite esperado entre el CRUD genérico y las operaciones específicas:
 
 - `RoleDAO` reutiliza `get`, `get_by`, `get_multi`, `create`, `update` y `delete`, y añade solamente el bootstrap de roles de sistema;
-- `PermissionDAO` reutiliza el listado genérico y añade la consulta por códigos del catálogo controlado;
+- `PermissionDAO` reutiliza el listado genérico y añade la consulta por códigos del Enum local; las respuestas toleran otros códigos persistidos en la tabla compartida;
 - `RolePermissionDAO` reemplaza asociaciones en una sola transacción;
 - `AuthorizationDAO` resuelve el actor y sus permisos mediante joins;
 - los casos de uso coordinan esos resultados y producen `Result`, pero no importan constructores SQLAlchemy ni ejecutan queries.
@@ -542,118 +542,40 @@ get_db closes AsyncSession
 
 **Patrón actual**: no importes una sesión global y la compartas entre tareas. Abre el alcance mediante la dependencia o el context manager apropiado.
 
-## 13) Pipeline ETL del scraper
+## 13) Proyección de una tabla administrada por otro servicio
 
-### 13.1 Separación por etapas
-
-El scraper sigue un patrón Extract, Transform, Load:
-
-```text
-scraper.py          transformers.py          loader.py
-Extract        →       Transform       →       Load
-HTTP pages             CardListing             PostgreSQL
-```
-
-Cada etapa tiene un contrato diferente:
-
-- extracción produce pares de nombre y HTML opcional;
-- transformación produce publicaciones normalizadas;
-- carga convierte tipos y persiste publicaciones.
-
-**Patrón actual**: conserva las etapas separadas aunque hoy compartan el mismo módulo técnico dentro del backend.
-
-### 13.2 Extracción asíncrona y limitada
-
-La extracción:
-
-- comparte un `AsyncClient`;
-- crea una tarea por carta;
-- limita concurrencia con `Semaphore`;
-- configura headers, redirects y timeout;
-- representa una página no disponible como `None`.
+`card_listings` pertenece a `free-win-search`, pero una Orden necesita validar su
+identificador y conservar un snapshot. El repositorio de Órdenes declara una
+`Table` parcial, sin modelo ORM ni operaciones de escritura:
 
 ```text
-cards
-  ├── task ─┐
-  ├── task ─┼─→ Semaphore ─→ shared AsyncClient
-  └── task ─┘
+OrderRequest use case
+        ↓ get_snapshot(id)
+CardListingReferenceDAO
+        ↓ SELECT columnas mínimas
+card_listings (free-win-search)
 ```
 
-**Patrón actual**: toda concurrencia externa debe tener un límite explícito y un cliente reutilizable dentro del batch.
-
-### 13.3 Transformación tolerante a HTML variable
-
-El transformador aplica selectores en orden y usa parsing de texto como fallback. Una fila inválida no cancela todo el lote.
+`CardListingSnapshot` es una dataclass inmutable. `ItemDAO` copia sus valores al
+ítem para que cambios posteriores de precio o descripción no reescriban la Orden.
 
 **Patrón actual**:
 
-- intenta estructuras específicas antes del fallback;
-- produce defaults explícitos para campos desconocidos;
-- descarta resultados sin identidad o precio útil;
-- deduplica al final de la transformación.
+- el componente consumidor declara solamente las columnas que necesita;
+- la tabla se registra en `Base.metadata` para resolver la FK;
+- `info["schema_owner"]` documenta el propietario externo;
+- el DAO ofrece lectura por ID y devuelve `Empty` cuando falta la publicación;
+- Alembic excluye la tabla tanto de reflexión como de comparación de metadata.
 
-**Restricción**: capturar `Exception` por fila mantiene el batch, pero oculta la causa. La evolución debe conservar tolerancia parcial y añadir una forma segura de observar fallos de parsing.
-
-### 13.4 Puerto estructural para carga
-
-`ScraperDataStore` es un `Protocol`:
-
-```python
-class ScraperDataStore(Protocol):
-    async def upsert_card_listings(
-        self,
-        rows: Sequence[dict[str, object]],
-    ) -> int: ...
-```
-
-`load_scraped_data` depende del protocolo y `SQLAlchemyScraperStore` implementa el adaptador real.
-
-```text
-load_scraped_data
-      ↓ depends on
-ScraperDataStore protocol
-      ↑ implemented by
-SQLAlchemyScraperStore / FakeScraperStore
-```
-
-**Patrón actual**: introduce un protocolo en un límite donde ya existen dos motivos reales: desacoplar persistencia y probar sin base de datos.
-
-### 13.5 Upsert idempotente
-
-La identidad persistente de una publicación es `(code, condition)`. Ante conflicto, se actualizan datos variables como precio, rareza y stock.
-
-**Patrón actual**: una nueva ejecución puede actualizar el estado observado sin crear filas duplicadas para la misma identidad.
-
-**Restricción**: la identidad y los campos actualizados deben revisarse si distintas ediciones o vendedores pueden compartir código y condición.
-
-### 13.6 Búsqueda de publicaciones con fallback
-
-La búsqueda pública de publicaciones aplica una cadena de resolución explícita:
-
-```text
-Consulta normalizada
-       ↓
-Caché ── hit ──────────────────────────────→ respuesta
-       ↓ miss
-PostgreSQL ── resultados ──────────────────→ caché → respuesta
-       ↓ vacío
-Scraper (Extract + Transform) ─────────────→ caché → respuesta
-```
-
-`CardListingSearch` encapsula la búsqueda externa y `ScraperCardListingSearch` adapta las etapas existentes de extracción y transformación. El caso de uso no conoce HTTPX, Beautiful Soup ni la forma de construir la URL externa.
-
-Los resultados obtenidos del scraper usan `CardListingResponse`, igual que los persistidos. Sus identificadores pueden ser nulos porque responder una búsqueda no implica que la publicación ya haya sido cargada en PostgreSQL.
-
-**Patrón actual**: consulta siempre el caché antes de realizar I/O de base de datos o red y conserva el orden caché → base de datos → proveedor externo.
-
-**Restricción**: la búsqueda interactiva no persiste automáticamente resultados del scraper. La carga continúa siendo una responsabilidad separada del pipeline.
+**Restricción**: compartir la base permite conservar la FK, pero no autoriza a
+Free Win a migrar o escribir las tablas del servicio de búsqueda.
 
 ## 14) Caché como puerto sustituible
 
 `src/core/services/cache/` define el protocolo asíncrono `Cache` con operaciones para leer, escribir, eliminar una clave e invalidar un prefijo. Los casos de uso dependen de este protocolo y FastAPI obtiene el proveedor mediante `get_cache`.
 
 ```text
-cards application
+Application components
        ↓ depends on
 Cache protocol
        ↑ implemented by
@@ -662,12 +584,9 @@ InMemoryCache / ValkeyCache
 
 `InMemoryCache` es el proveedor predeterminado para desarrollo. `ValkeyCache` implementa el mismo puerto mediante el cliente asíncrono oficial y se activa con `CACHE_BACKEND=valkey`.
 
-Las lecturas de Cartas y Publicaciones almacenan respuestas serializadas durante cinco minutos. Las mutaciones de Carta actualizan la clave individual e invalidan las listas afectadas para no servir representaciones obsoletas.
-
 **Patrón actual**:
 
 - las claves incluyen recurso, operación y parámetros normalizados;
-- un valor vacío también se almacena para evitar repetir búsquedas externas sin resultados;
 - los casos de uso trabajan con schemas de respuesta, no con objetos ORM guardados en memoria;
 - cambiar el proveedor no modifica los casos de uso;
 - Valkey añade un namespace configurable a todas las claves;
@@ -675,33 +594,15 @@ Las lecturas de Cartas y Publicaciones almacenan respuestas serializadas durante
 
 La invalidación distribuida usa `SCAN` y borrado en lotes. No usa `KEYS`, porque recorrer todo el keyspace de forma bloqueante afectaría otras solicitudes.
 
-## 15) Separación de I/O y CPU
+## 15) Recursos asíncronos y lifecycle
 
-El pipeline distingue:
+FastAPI, SQLAlchemy, asyncpg y el proveedor de caché realizan I/O asíncrono. Las
+sesiones de base de datos tienen alcance por solicitud y el lifecycle de la
+aplicación inicia y cierra el caché configurado.
 
-- descarga de red, resuelta con `asyncio` y HTTPX;
-- parsing de HTML, delegado a procesos.
-
-```text
-Event loop
-  ├── network I/O with AsyncClient
-  └── run_in_executor
-          ↓
-      ProcessPoolExecutor
-          ↓
-      BeautifulSoup parsing
-```
-
-El executor:
-
-- se crea de forma lazy;
-- se conserva a nivel de módulo;
-- usa como máximo el número de CPU disponible;
-- se comparte entre transformaciones.
-
-**Patrón actual**: no ejecutes trabajo de parsing pesado directamente en el event loop.
-
-**Patrón en evolución**: falta integrar el cierre del executor con el lifecycle de la aplicación o del proceso que ejecute el pipeline.
+**Patrón actual**: todo recurso con conexiones o pools debe tener propietario y
+cierre explícitos. No compartas una `AsyncSession` entre solicitudes ni ocultes
+I/O bloqueante dentro de funciones `async`.
 
 ## 16) Configuración por responsabilidad
 
@@ -805,14 +706,14 @@ Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan
 - **Evidencia**: `src/core/db/dao.py`, `src/api/users/repository/dao.py`.
 - **Revisión**: reevaluar si el genérico empieza a necesitar condiciones específicas de múltiples componentes.
 
-### DEC-20260720-scraper-etl-boundaries
+### DEC-20260811-external-card-listing-projection
 
-- **Fecha**: 2026-07-20.
-- **Contexto**: scraping, parsing y persistencia tienen ritmos, errores y recursos diferentes.
-- **Decisión**: mantener extracción, transformación y carga como etapas separadas, con un protocolo en el límite de persistencia.
-- **Impacto**: las etapas pueden probarse y evolucionar de forma independiente, y el pipeline conserva una ruta de extracción futura.
-- **Evidencia**: `src/core/services/scraper/`.
-- **Revisión**: reevaluar los contratos si el scraper se convierte en un proceso o servicio independiente.
+- **Fecha**: 2026-08-11.
+- **Contexto**: Órdenes necesita datos de una Publicación administrada por `free-win-search` sin recuperar el componente de cartas.
+- **Decisión**: usar una proyección SQLAlchemy parcial y de solo lectura, devolver un snapshot inmutable y excluir las tablas externas de Alembic.
+- **Impacto**: se conserva la FK de la base compartida y el caso de uso no depende de la aplicación de búsqueda.
+- **Evidencia**: `src/api/order_requests/repository/card_listings.py`, `migrations/ownership.py`.
+- **Revisión**: reemplazar el patrón si la integración deja de compartir PostgreSQL.
 
 ### DEC-20260721-typed-result
 
@@ -823,14 +724,6 @@ Strings como `"Error"`, excepciones genéricas y capturas silenciosas dificultan
 - **Evidencia**: `src/core/result.py`, `src/api/users/domain/errors.py`, `src/api/users/application/`, `src/api/users/infrastructure/`.
 - **Revisión**: reevaluar solamente si el type checker elegido no puede verificar exhaustividad o el patrón genera complejidad desproporcionada.
 
-### DEC-20260721-card-listing-cache-aside
-
-- **Fecha**: 2026-07-21.
-- **Contexto**: buscar una publicación no debe repetir scraping cuando el dato ya está disponible localmente.
-- **Decisión**: resolver búsquedas mediante cache-aside en el orden caché → PostgreSQL → scraper y depender de un protocolo de caché neutral al proveedor.
-- **Impacto**: `InMemoryCache` y `ValkeyCache` pueden alternarse sin cambiar los casos de uso; los resultados externos, incluidos los vacíos, se reutilizan durante el TTL.
-- **Evidencia**: `src/api/cards/application/card_listing_cases.py`, `src/core/services/cache/`, `src/core/services/scraper/search.py`.
-- **Revisión**: reevaluar TTL, claves e invalidación cuando se conozca el patrón real de uso de Valkey.
 
 ### DEC-20260722-explicit-permission-policies
 
@@ -860,7 +753,7 @@ Para colecciones, filtra por `actor.user_id` cuando el actor tenga el permiso pr
 - `src/application.py`: composition root de FastAPI.
 - `src/api/api.py`: composición de routers.
 - `src/api/users/`: componente de referencia actual.
-- `src/api/cards/`: CRUD de Cartas y búsqueda de Publicaciones.
+- `src/api/order_requests/`: componente de Órdenes y snapshots de Publicaciones.
 - `src/core/schema/base.py`: modelo Pydantic compartido.
 - `src/core/result.py`: resultado tipado para errores recuperables.
 - `src/core/db/model.py`: base declarativa y mixins.
@@ -868,7 +761,8 @@ Para colecciones, filtra por `actor.user_id` cuando el actor tenga el permiso pr
 - `src/core/db/deps.py`: alcance de sesiones.
 - `src/core/utils/filters.py`: objetos de filtros.
 - `src/core/utils/utils.py`: sentinels y utilidades compartidas.
-- `src/core/services/scraper/`: pipeline ETL.
+- `src/api/order_requests/repository/card_listings.py`: proyección externa de solo lectura.
+- `migrations/ownership.py`: límite de propiedad de tablas para Alembic.
 - `src/core/services/cache/`: puerto y proveedor temporal de caché.
 - `docs/conventions.md`: reglas normativas.
 - `docs/tech_context.md`: stack y restricciones técnicas.
@@ -878,12 +772,10 @@ Para colecciones, filtra por `actor.user_id` cuando el actor tenga el permiso pr
 
 - **Adaptador**: implementación que conecta una capacidad del sistema con una tecnología o interfaz concreta.
 - **Composition root**: lugar donde se crean y conectan las partes principales de la aplicación.
-- **ETL**: secuencia de extracción, transformación y carga de datos.
 - **Puerto**: contrato que expresa una capacidad necesaria sin fijar su implementación.
 - **Result**: unión `Ok[T] | Err[E]` que hace explícito un éxito o error recuperable.
 - **Recurso**: entidad o concepto expuesto mediante operaciones propias dentro de un componente.
 - **Sentinel**: valor especial que representa un estado como ausencia sin confundirse con datos ordinarios.
-- **Upsert**: inserción que actualiza el registro existente cuando ocurre un conflicto de identidad.
 
 ## 22) Checklist de actualización
 
@@ -894,7 +786,7 @@ Para colecciones, filtra por `actor.user_id` cuando el actor tenga el permiso pr
 - [ ] ¿Cambió la representación de ausencia del DAO?
 - [ ] ¿La paginación tiene ya un contrato estable?
 - [ ] ¿Las relaciones SQLAlchemy pendientes fueron corregidas?
-- [ ] ¿Cambió alguna etapa o límite del scraper?
+- [ ] ¿Cambió el límite de datos o migraciones con `free-win-search`?
 - [ ] ¿Las claves, TTL e invalidación del caché siguen siendo coherentes?
 - [ ] ¿Se añadió un patrón que necesita ejemplo, decisión o clasificación?
 - [ ] ¿Un patrón en evolución puede reclasificarse como actual o legacy?

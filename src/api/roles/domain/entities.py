@@ -7,8 +7,11 @@ from .permissions import PermissionCode
 
 class PermissionResponse(BaseModel):
     id: int = Field(description="Identificador interno del permiso.")
-    code: PermissionCode = Field(
-        description="Código estable que expresa recurso, acción y alcance."
+    code: str = Field(
+        description=(
+            "Código estable persistido en la tabla compartida. Puede pertenecer "
+            "a Free Win o a otro servicio."
+        )
     )
     description: str = Field(description="Explicación del permiso.")
 

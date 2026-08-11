@@ -4,7 +4,7 @@
 
 Free Win es el backend comunitario para facilitar la compra de cartas de Yu-Gi-Oh! difíciles de conseguir localmente. Prioriza soluciones sencillas, mantenibles y útiles para jugadores y administradores; evita procesos corporativos, sobrearquitectura y dependencias o servicios sin una necesidad actual.
 
-El núcleo funcional son los **Pedidos** y las **Órdenes**; el núcleo técnico actual es el scraper en `src/core/services/scraper/`. Las funcionalidades futuras orientan el producto, pero no amplían por sí mismas el alcance de una tarea.
+El núcleo funcional y técnico de este backend son los **Pedidos** y las **Órdenes**. La búsqueda y carga de cartas pertenecen al servicio separado `free-win-search`, aunque ambos servicios comparten PostgreSQL y las Órdenes conservan su FK hacia `card_listings`. Las funcionalidades futuras orientan el producto, pero no amplían por sí mismas el alcance de una tarea.
 
 ## Vocabulario obligatorio
 
@@ -27,11 +27,11 @@ Este repositorio contiene únicamente el backend Python. Los componentes de `src
 
 Las convenciones obligatorias de código, HTTP, persistencia, seguridad y asincronía están en [docs/conventions.md](docs/conventions.md). Los patrones y ejemplos de implementación están en [docs/system_patterns.md](docs/system_patterns.md).
 
-## Scraping y datos externos
+## Cartas y datos compartidos
 
-Conserva el pipeline existente y sus etapas de extracción, transformación, validación y persistencia. No lo rediseñes sin una necesidad explícita. Mantén concurrencia limitada, timeouts, manejo de HTML o respuestas incompletas, normalización previa a persistir y pruebas sin red mediante fixtures locales. No registres secretos, datos personales ni respuestas externas excesivas.
+No añadas búsqueda, scraping ni CRUD de cartas a este backend. `free-win-search` administra esas capacidades y las tablas `cards` y `card_listings`. Free Win puede leer una proyección mínima de `card_listings` para validar y copiar snapshots de los ítems de una Orden; no debe alterar el esquema externo ni eliminar sus tablas, FK o permisos persistidos.
 
-Consulta [docs/tech_context.md](docs/tech_context.md) y [docs/system_patterns.md](docs/system_patterns.md) antes de modificarlo.
+Consulta [docs/tech_context.md](docs/tech_context.md) y [docs/system_patterns.md](docs/system_patterns.md) antes de modificar este límite.
 
 ## Forma de trabajo
 

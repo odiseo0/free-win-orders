@@ -43,7 +43,7 @@ Esta guía no define:
 
 Ejemplo correcto:
 
-> El scraper descarga páginas de forma asíncrona y limita la concurrencia mediante un semáforo.
+> `CardListingReferenceDAO` consulta solamente las columnas necesarias para el snapshot de una Orden.
 
 Ejemplo incorrecto:
 
@@ -235,7 +235,7 @@ Ejemplos:
 
 - `src/api/users/`: componente completo.
 - `src/api/users/infrastructure/users_api.py`: endpoints de Usuarios.
-- `src/core/services/scraper/transformers.py`: transformación del HTML.
+- `src/api/order_requests/repository/card_listings.py`: proyección externa de Publicaciones.
 
 ### 8.2 Referencias a símbolos y líneas
 
@@ -313,20 +313,19 @@ Cada decisión incluye:
 Ejemplo:
 
 ```md
-### DEC-20260720-scraper-in-backend
+### DEC-20260811-external-table-boundary
 
-- **Fecha**: 2026-07-20.
-- **Contexto**: separar el scraper ahora retrasaría el flujo inicial.
-- **Decisión**: mantener el pipeline dentro del backend con límites separables.
-- **Impacto**: comparte despliegue con la API por el momento.
-- **Evidencia**: `src/core/services/scraper/`.
-- **Revisión**: reevaluar cuando necesite escalado o ejecución independiente.
-```
+- **Fecha**: 2026-08-11.
+- **Contexto**: dos servicios comparten una tabla relacionada.
+- **Decisión**: declarar una proyección de lectura y respetar al propietario del esquema.
+- **Impacto**: se conserva la FK sin duplicar migraciones.
+- **Evidencia**: `src/api/order_requests/repository/card_listings.py`.
+- **Revisión**: reevaluar si los servicios dejan de compartir base de datos.
 
 ## 11) Documentos temporales y propuestas
 
 - **Required** un documento temporal debe declararlo al inicio.
-- **Required** el contenido de `ideas.md` no es normativo hasta incorporarse al documento propietario correspondiente.
+- **Required** el contenido de cualquier documento temporal no es normativo hasta incorporarse al documento propietario correspondiente.
 - **Required** una propuesta debe usar la etiqueta **Propuesta** y no mezclarse con comportamiento actual.
 - **Recommended** elimina material temporal después de incorporarlo o descartarlo, cuando ya no aporte contexto.
 - **Recommended** evita que notas de lluvia de ideas se conviertan accidentalmente en documentación oficial.
@@ -345,7 +344,6 @@ Usa este mapa para evitar duplicación:
 | `docs/conventions.md` | Reglas de código y diseño para contribuciones |
 | `docs/testing.md` | Estrategia, herramientas y criterios de pruebas |
 | `docs/formatting.md` | Formato, estructura y mantenimiento de documentación |
-| `ideas.md` | Lluvia de ideas temporal sin autoridad normativa |
 
 Cuando un tema afecte varios documentos, mantén el detalle completo en el documento propietario y añade referencias breves desde los demás.
 
@@ -373,7 +371,6 @@ Comprueba especialmente:
 
 - `README.md`: presentación breve del repositorio.
 - `AGENTS.md`: contexto del dominio y reglas para agentes.
-- `ideas.md`: fuente temporal de propuestas.
 - `docs/general_documentation.md`: vocabulario y visión general.
 - `docs/conventions.md`: convenciones de código y diseño.
 - `docs/system_patterns.md`: patrones del sistema.

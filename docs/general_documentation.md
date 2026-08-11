@@ -14,7 +14,7 @@ Este documento cubre:
 - los conceptos principales del dominio;
 - el flujo previsto de Pedidos y Órdenes;
 - la arquitectura general del backend;
-- el estado actual de la API y del scraper;
+- el estado actual de la API y su límite con el servicio de búsqueda;
 - una guía rápida para navegar el repositorio.
 
 Este documento no cubre:
@@ -29,12 +29,11 @@ Este documento no cubre:
 
 Comprar cartas de Yu-Gi-Oh! que no están disponibles localmente requiere agrupar solicitudes, buscarlas en tiendas externas y coordinar su compra y entrega. Este proceso no ocurre de forma inmediata: Free Win abre períodos durante los cuales los jugadores envían las cartas que desean y los administradores revisan cada solicitud.
 
-La aplicación busca centralizar ese trabajo. En lugar de depender exclusivamente de archivos de Excel y seguimiento manual, el backend debe permitir crear Pedidos, recibir Órdenes, consultar cartas y mantener la trazabilidad de lo ocurrido.
+La aplicación busca centralizar ese trabajo. En lugar de depender exclusivamente de archivos de Excel y seguimiento manual, este backend permite crear Pedidos, recibir Órdenes y mantener la trazabilidad de lo ocurrido. La consulta de cartas se realiza mediante `free-win-search`.
 
-El proyecto tiene dos núcleos complementarios:
-
-- **Núcleo funcional**: gestión de Pedidos y Órdenes.
-- **Núcleo técnico**: pipeline de scraping para localizar cartas, transformar resultados y almacenarlos.
+El núcleo de este repositorio es la gestión de Pedidos y Órdenes. La búsqueda,
+transformación y carga de cartas pertenece a `free-win-search`, desplegado de
+forma independiente pero conectado a la misma base PostgreSQL.
 
 ## 4) Conceptos del dominio
 
@@ -90,15 +89,19 @@ Una Dirección de usuario representa un lugar asociado con un Usuario y puede ut
 
 ### 4.5 Rol de usuario
 
-Un `Role` agrupa permisos del catálogo controlado por `PermissionCode`. `Admin` y `User` son roles de sistema inmutables; los administradores pueden crear roles personalizados y reemplazar atómicamente su conjunto de permisos.
+Un `Role` agrupa permisos. `PermissionCode` controla los códigos que esta API
+puede asignar, mientras la tabla compartida puede conservar códigos pertenecientes
+a `free-win-search`. `Admin` y `User` son roles de sistema inmutables; los
+administradores pueden crear roles personalizados y reemplazar atómicamente su
+conjunto de permisos locales.
 
 `UserRole` es un puente temporal entre `User` y `Role`. Cada `Role` posee un único puente y las nuevas asignaciones se realizan con el ID real del rol mediante `PUT /users/{user_id}/role`. La API `/user-roles` se conserva solamente por compatibilidad y está marcada como obsoleta.
 
 ### 4.6 Carta y publicación
 
-Una Carta contiene los metadatos descriptivos y relativamente estáticos del artículo que el jugador desea localizar. Una Publicación de carta (`CardListing`) es el producto consultable: representa una edición y condición concretas con precio y stock.
+Una Carta contiene los metadatos descriptivos y relativamente estáticos del artículo que el jugador desea localizar. Una Publicación de carta (`CardListing`) representa una edición y condición concretas con precio y disponibilidad. Ambos conceptos pertenecen a `free-win-search`.
 
-Una misma carta puede tener múltiples publicaciones porque el set, la condición, el precio o la disponibilidad pueden variar.
+Una misma carta puede tener múltiples publicaciones porque el set, la condición, el precio o la disponibilidad pueden variar. Free Win no expone su búsqueda ni CRUD: solamente valida el ID de una publicación existente y copia un snapshot dentro del ítem de una Orden.
 
 ## 5) Flujo funcional previsto
 
@@ -131,13 +134,10 @@ El repositorio contiene actualmente:
 - endpoints protegidos para Usuarios y Direcciones de usuario;
 - catálogo de permisos y CRUD de Roles personalizados;
 - autorización por permisos y propiedad con identidad local temporal;
-- endpoints CRUD para Cartas;
-- endpoints de lectura y búsqueda para Publicaciones de cartas;
 - creación, consulta, modificación, cierre e historial de Pedidos;
 - creación, consulta, edición, revisión, precios, estados e historial de Órdenes;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
-- un pipeline de scraping con etapas de extracción, transformación y carga;
 - un contrato de caché sustituible con implementaciones en memoria y Valkey;
 - configuración separada para API, caché y base de datos.
 
@@ -149,9 +149,7 @@ La superficie HTTP registrada actualmente incluye:
 | Direcciones | `/user-addresses` | listar, obtener, crear, actualizar y eliminar |
 | Roles de usuario | `/user-roles` | listar, obtener, crear, actualizar y eliminar |
 | Roles | `/roles` | CRUD de roles personalizados y asignación de permisos |
-| Permisos | `/permissions` | lectura del catálogo controlado |
-| Cartas | `/cards` | listar, obtener, crear, actualizar y eliminar |
-| Publicaciones | `/card-listings` | listar, obtener y buscar |
+| Permisos | `/permissions` | lectura de la tabla compartida; asignación limitada al Enum local |
 | Pedidos | `/order-periods` | crear, listar, obtener, modificar, cerrar y consultar historial |
 | Órdenes | `/order-requests` | crear, listar, obtener, editar nota e ítems, revisar, cotizar, aceptar, rechazar, cancelar, reabrir y consultar historial |
 
@@ -166,11 +164,11 @@ se aplicó directamente sobre las rutas existentes, sin duplicarlas ni introduci
 un período adicional de deprecación. Los consumidores deben coordinar estos
 cambios incompatibles:
 
-- los listados paginados de Usuarios, Direcciones, Roles de usuario, Cartas y
-  Publicaciones comienzan en `page=1`;
+- los listados paginados de Usuarios, Direcciones y Roles de usuario comienzan
+  en `page=1`;
 - esos listados validan `1 <= shows <= 100` y responden `{items, total}`;
-- las búsquedas de Publicaciones y los catálogos completos de Roles y Permisos
-  continúan como arrays porque no representan listados paginados;
+- los catálogos completos de Roles y Permisos continúan como arrays porque no
+  representan listados paginados;
 - las eliminaciones exitosas de Usuarios, Direcciones y Roles de usuario
   responden `204 No Content` sin cuerpo;
 - los identificadores de ruta deben ser positivos; cero y valores negativos
@@ -185,7 +183,7 @@ como obsoleto: su normalización no revierte ni amplía esa estrategia.
 
 ### 6.3 Estructura preparada pero incompleta
 
-El componente `collections` existe dentro de `src/api/`, pero sus capas todavía no contienen una implementación funcional completa. `order_periods` implementa los Pedidos y `order_requests` implementa la primera versión de las Órdenes hasta la revisión inicial.
+`order_periods` implementa los Pedidos y `order_requests` implementa la primera versión de las Órdenes hasta la revisión inicial.
 
 También están pendientes de definición o finalización:
 
@@ -195,7 +193,6 @@ También están pendientes de definición o finalización:
 - dirección de entrega, comprobantes y trazabilidad de entrega;
 - plataforma y URL de origen dentro del snapshot de un ítem;
 - vista consolidada y exportación administrativa por Pedido;
-- persistencia coordinada de resultados obtenidos por búsqueda;
 - entorno Valkey disponible para validar la integración distribuida;
 - contrato uniforme de errores HTTP.
 
@@ -240,10 +237,9 @@ src/
 ├── application.py
 ├── api/
 │   ├── api.py
-│   ├── cards/
-│   ├── collections/
 │   ├── order_periods/
 │   ├── order_requests/
+│   ├── roles/
 │   └── users/
 ├── core/
 │   ├── db/
@@ -305,58 +301,29 @@ Paso a paso:
 
 Los detalles y reglas de esta interacción se documentan en `docs/conventions.md` y, progresivamente, en `docs/system_patterns.md`.
 
-## 9) Pipeline de scraping
+## 9) Límite con el servicio de búsqueda
 
-El scraper se encuentra en `src/core/services/scraper/` y está diseñado como un pipeline separable del resto de la API.
+`free-win-search` expone la búsqueda de cartas y administra las tablas `cards` y
+`card_listings`. Free Win comparte la misma base de datos, pero el desacoplamiento
+es explícito a nivel de aplicación y migraciones.
 
-### 9.1 Extracción
+`src/api/order_requests/repository/card_listings.py` declara una proyección mínima
+de solo lectura. Al crear o modificar una Orden, el caso de uso consulta por ID y
+copia nombre, set, código, precio, rareza y condición al snapshot del ítem. No
+invoca casos de uso, routers ni modelos ORM del servicio de búsqueda.
 
-`scraper.py` recibe nombres de cartas, construye las rutas de consulta y obtiene las páginas de forma asíncrona. La concurrencia está limitada mediante un semáforo y las solicitudes externas tienen timeout.
-
-### 9.2 Transformación
-
-`transformers.py` analiza el HTML y produce publicaciones normalizadas. Debido a que el procesamiento de HTML puede consumir CPU, distribuye el trabajo mediante un `ProcessPoolExecutor` reutilizable.
-
-La transformación intenta extraer:
-
-- nombre y set;
-- código de la carta;
-- precio;
-- rareza;
-- condición;
-- stock.
-
-También elimina publicaciones duplicadas antes de devolver los resultados.
-
-### 9.3 Carga
-
-`loader.py` convierte los resultados a tipos apropiados para persistencia y realiza un upsert en PostgreSQL. Una publicación se identifica de forma única por la combinación de código y condición.
-
-El pipeline conceptual es:
+La relación se conserva en PostgreSQL:
 
 ```text
-Nombres de cartas
-    ↓
-Descarga asíncrona de páginas
-    ↓
-Transformación de HTML en procesos separados
-    ↓
-Normalización y deduplicación
-    ↓
-Upsert de publicaciones en PostgreSQL
+order_request_items.card_listing_id
+                 ↓ FK
+        card_listings.id
+        (free-win-search)
 ```
 
-### 9.4 Búsqueda interactiva
-
-`GET /card-listings/search?query=<nombre>` consulta primero el caché y después PostgreSQL. Solamente cuando ambas fuentes carecen de resultados utiliza las etapas de extracción y transformación del scraper. La respuesta obtenida se guarda en caché durante cinco minutos, incluidos los resultados vacíos.
-
-```text
-Caché → PostgreSQL → Scraper → Caché → Usuario
-```
-
-La búsqueda no ejecuta automáticamente la carga a PostgreSQL. Esto mantiene separada la respuesta interactiva de la persistencia del pipeline.
-
-Aunque hoy forma parte del backend, sus límites deben permitir separarlo en un servicio independiente si el crecimiento real del proyecto lo justifica.
+Las migraciones históricas de Free Win permanecen intactas. Las migraciones nuevas
+excluyen las tablas externas durante `autogenerate`; `free-win-search` registra su
+historia mediante `free_win_search_alembic_version`.
 
 ## 10) Datos y configuración
 
@@ -388,7 +355,7 @@ Las siguientes ideas forman parte de la dirección del producto, pero todavía n
 - Pre-Pedidos;
 - mapa de entrega;
 - históricos de precios;
-- base de datos propia de publicaciones consultable sin scraping continuo.
+- integración de cliente con el API independiente de búsqueda.
 
 Esta lista no autoriza a implementar alcance adicional durante una tarea no relacionada.
 
@@ -404,7 +371,7 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 6. `src/api/api.py`: routers disponibles.
 7. `src/api/users/`: ejemplo más completo de un componente.
 8. `src/core/db/`: persistencia compartida.
-9. `src/core/services/scraper/`: pipeline de cartas.
+9. `src/api/order_requests/repository/card_listings.py`: límite de lectura con el servicio de búsqueda.
 10. `docs/conventions.md`: reglas de implementación.
 11. `docs/system_patterns.md`: patrones técnicos detallados a medida que se documenten.
 
@@ -416,7 +383,7 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 - `src/api/api.py`: routers registrados.
 - `src/api/users/`: implementación actual de Usuarios, Direcciones y Roles.
 - `src/core/db/`: infraestructura de persistencia.
-- `src/core/services/scraper/`: pipeline de scraping.
+- `src/api/order_requests/repository/card_listings.py`: proyección externa de Publicaciones.
 - `docs/conventions.md`: convenciones de código y diseño.
 - `docs/orderRequestIdea.md`: decisiones y propuestas funcionales de las Órdenes.
 - `docs/system_patterns.md`: patrones del sistema.
@@ -445,14 +412,14 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 - **Evidencia**: `README.md`, `src/`.
 - **Revisión**: reconsiderar solamente si mantener ambos proyectos juntos aporta una ventaja concreta.
 
-### DEC-20260720-scraper-in-backend
+### DEC-20260811-search-service-separated
 
-- **Fecha**: 2026-07-20.
-- **Contexto**: el scraper es necesario para construir rápidamente el flujo de búsqueda y carga de datos.
-- **Decisión**: el pipeline permanece en `src/core/services/scraper/`, conservando límites que permitan extraerlo en el futuro.
-- **Impacto**: no se crea un microservicio antes de que exista una necesidad operativa real.
-- **Evidencia**: `src/core/services/scraper/`.
-- **Revisión**: reconsiderar si su despliegue, escalado o ciclo de ejecución necesita independencia del API.
+- **Fecha**: 2026-08-11.
+- **Contexto**: la búsqueda y carga de cartas necesitan un ciclo de aplicación y migraciones independiente.
+- **Decisión**: `free-win-search` administra búsqueda, scraping, `cards` y `card_listings`; Free Win conserva solamente la FK y una proyección de lectura para snapshots de Órdenes.
+- **Impacto**: ambos servicios comparten PostgreSQL, pero no importan componentes de aplicación entre sí y utilizan tablas de versión Alembic distintas.
+- **Evidencia**: `src/api/order_requests/repository/card_listings.py`, `migrations/ownership.py`.
+- **Revisión**: reevaluar si las bases de datos se separan físicamente o la referencia deja de resolverse mediante FK.
 
 ## 16) Checklist de actualización
 
@@ -463,6 +430,6 @@ Actualiza este documento cuando cambie alguno de estos puntos:
 - [ ] flujo funcional principal;
 - [ ] componentes disponibles o responsabilidades de alto nivel;
 - [ ] routers expuestos por la API;
-- [ ] etapas o ubicación del scraper;
+- [ ] límite de datos y migraciones con `free-win-search`;
 - [ ] estado real de una funcionalidad descrita como actual o prevista;
 - [ ] decisiones o restricciones que alteren el modelo mental del proyecto.

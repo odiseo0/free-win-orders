@@ -30,12 +30,12 @@ Este documento no cubre:
 
 | Área | Estado actual |
 | --- | --- |
-| Backend HTTP | FastAPI con routers para Usuarios, Direcciones y Roles |
+| Backend HTTP | FastAPI con routers para Usuarios, Roles, Pedidos y Órdenes |
 | Runtime | Python 3.13 |
 | Persistencia | SQLAlchemy 2 async y PostgreSQL mediante asyncpg |
 | Configuración | pydantic-settings dividido en API, caché y base de datos |
 | Caché | `InMemoryCache` local o Valkey mediante `valkey-py` async |
-| Scraper | Extracción async, transformación multiproceso y carga PostgreSQL |
+| Búsqueda de cartas | Servicio separado `free-win-search` sobre PostgreSQL compartido |
 | Gestor del proyecto | PDM |
 | Migraciones | Alembic con historial local y propiedad de tablas separada por servicio |
 | Frontend | Fuera del alcance de este repositorio |
@@ -57,7 +57,6 @@ Este documento no cubre:
 | Dependencia | Propósito principal | Uso representativo |
 | --- | --- | --- |
 | `fastapi[standard]` | API ASGI, routing, dependencias y servidor de desarrollo | `src/application.py`, `src/api/` |
-| `beautifulsoup4` | Análisis del HTML de cartas | `src/core/services/scraper/transformers.py` |
 | `SQLAlchemy` | ORM, consultas y persistencia async | `src/core/db/`, repositories |
 | `asyncpg` | Driver PostgreSQL asíncrono | `src/core/db/session.py` |
 | `httptools` | Parser HTTP de alto rendimiento para el servidor ASGI | runtime de FastAPI/Uvicorn |
@@ -67,11 +66,8 @@ Este documento no cubre:
 
 ### 4.3 Dependencias usadas de forma indirecta o no declarada
 
-El código importa actualmente:
-
-- `httpx` para solicitudes externas;
-- `pydantic-settings` para configuración;
-- pytest para la suite existente.
+El código importa actualmente `httpx` para pruebas ASGI, `pydantic-settings` para
+configuración y pytest para la suite existente.
 
 Estas dependencias no aparecen como entradas directas en `pyproject.toml`. Algunas pueden estar disponibles transitivamente o en el entorno local, pero el proyecto no debe depender de esa casualidad.
 
@@ -79,13 +75,8 @@ Estas dependencias no aparecen como entradas directas en `pyproject.toml`. Algun
 
 ### 4.4 Librería estándar relevante
 
-El scraper también utiliza:
-
-- `asyncio` para concurrencia de I/O;
-- `ProcessPoolExecutor` para parsing intensivo en CPU;
-- `dataclasses` para estructuras intermedias;
-- `Decimal` para precios;
-- `zoneinfo` mediante las utilidades de zona horaria del proyecto.
+La librería estándar aporta `asyncio` para el runtime asíncrono, `dataclasses`
+para entidades y resultados, y `Decimal` para importes y snapshots de Órdenes.
 
 ## 5) Arranque y superficie HTTP
 
@@ -119,9 +110,8 @@ pdm run fastapi dev src/application.py
 | Roles de usuario | `/user-roles` |
 | Roles | `/roles` |
 | Permisos | `/permissions` |
-| Cartas | `/cards` |
-| Publicaciones de cartas | `/card-listings` |
 | Pedidos | `/order-periods` |
+| Órdenes | `/order-requests` |
 
 Cada router usa una `AsyncSession` proporcionada por la dependencia `get_db`.
 
@@ -153,9 +143,9 @@ src/
 ├── application.py
 ├── api/
 │   ├── api.py
-│   ├── cards/
-│   ├── collections/
 │   ├── order_periods/
+│   ├── order_requests/
+│   ├── roles/
 │   └── users/
 ├── core/
 │   ├── db/
@@ -169,9 +159,10 @@ src/
 - `src/api/` organiza funcionalidad por componente.
 - `src/core/` contiene capacidades compartidas.
 - `src/settings/` separa configuración por responsabilidad.
-- `src/api/users/` es el componente más desarrollado y sirve como referencia actual.
+- `src/api/users/` ofrece el flujo CRUD de Usuarios y Direcciones.
 - `order_periods` implementa Pedidos con estado temporal derivado, historial y autorización.
-- `collections` y las futuras Órdenes (`OrderRequest`) aún están incompletas.
+- `order_requests` implementa Órdenes, snapshots, revisión, precios y transiciones.
+- `roles` implementa autorización, catálogo local y administración de Roles.
 
 La dirección de dependencias y responsabilidades se define en `docs/conventions.md`.
 
@@ -301,93 +292,37 @@ El componente usa schemas Pydantic separados para base, creación, actualizació
 
 La persistencia del componente se concentra en `src/api/roles/repository/dao.py`. Los casos de uso no construyen consultas: utilizan `RoleDAO`, `PermissionDAO`, `RolePermissionDAO` y los DAOs del puente de Usuarios. La dependencia de identidad utiliza `AuthorizationDAO` para cargar `User → UserRole → Role → Permission`.
 
-### 9.2 Cartas y publicaciones
+### 9.2 Referencia externa de Publicaciones
 
-Los modelos principales del componente se encuentran en `src/api/cards/repository/model.py`:
+`free-win-search` es propietario de `cards` y `card_listings`. Este backend declara
+en `src/api/order_requests/repository/card_listings.py` una `Table` parcial dentro
+de `Base.metadata` para resolver la FK y consultar únicamente las columnas que
+forman el snapshot de una Orden.
 
-- `Card` conserva metadatos descriptivos y relativamente estáticos;
-- `CardListing` representa la publicación consultada por los jugadores, con precio, condición y stock.
+`CardListingReferenceDAO` ejecuta una lectura por ID y devuelve
+`CardListingSnapshot`. No hay relaciones ORM, escrituras ni endpoints de cartas
+en Free Win.
 
-Una publicación almacena:
+## 10) Servicio externo de búsqueda
 
-- nombre;
-- set;
-- código;
-- precio como `Decimal`;
-- rareza;
-- condición;
-- stock.
+La búsqueda, scraping y carga de cartas se ejecutan en `free-win-search`. Ambos
+servicios usan PostgreSQL compartido, pero tienen composición de aplicación y
+tablas Alembic independientes.
 
-La restricción única combina `code` y `condition`. La carga usa `INSERT ... ON CONFLICT DO UPDATE` de PostgreSQL para actualizar publicaciones existentes.
+Free Win reconoce como externas `cards`, `card_listings`, `scrape_targets`,
+`scrape_jobs`, `search_index_events` y `free_win_search_alembic_version`. Los
+filtros de `migrations/ownership.py` impiden que `autogenerate` proponga crear,
+alterar o eliminar esas tablas.
 
-El componente expone CRUD completo de Carta para apoyar el desarrollo y las pruebas actuales. Las Publicaciones son de lectura y ofrecen consulta individual, listado y búsqueda.
+## 11) Contrato de datos compartido
 
-## 10) Servicios externos
+La integración actual es síncrona a través de PostgreSQL: una Orden recibe un
+`card_listing_id`, valida que exista y copia sus datos descriptivos. La FK
+`order_request_items.card_listing_id → card_listings.id` permanece activa.
 
-### 10.1 CoolStuffInc
-
-El scraper consulta CoolStuffInc para localizar publicaciones de cartas.
-
-Configuración relevante en `src/core/constants.py`:
-
-| Constante | Valor o función |
-| --- | --- |
-| `BASE_URL` | Página base de productos Yu-Gi-Oh! |
-| `BASE_URL_SEARCH` | Endpoint de búsqueda |
-| `REQUEST_TIMEOUT_SECONDS` | Timeout de 15 segundos |
-| `SEARCH_RESULTS_PER_PAGE` | 50 resultados |
-| `DELAY_BETWEEN_REQUESTS_SECONDS` | 1.5 segundos |
-| `USER_AGENT` | Identificación del cliente HTTP |
-
-El scraper debe tratar la estructura HTML como una dependencia externa inestable.
-
-### 10.2 YGOPRODeck
-
-`src/core/services/ygopro_api.py` contiene integración HTTP con la API de YGOPRODeck. Su URL base se define mediante `YGO_API_URL`.
-
-El papel definitivo de esta fuente frente al scraper y la base propia todavía debe documentarse cuando el flujo de cartas esté completo.
-
-## 11) Pipeline de scraping
-
-### 11.1 Extracción
-
-`src/core/services/scraper/scraper.py`:
-
-- recibe una lista de nombres;
-- codifica cada nombre para la URL;
-- comparte un `httpx.AsyncClient`;
-- limita la concurrencia a 50 solicitudes mediante `asyncio.Semaphore`;
-- devuelve `None` para páginas no encontradas o errores de request.
-
-### 11.2 Transformación
-
-`src/core/services/scraper/transformers.py`:
-
-- analiza HTML mediante Beautiful Soup;
-- busca distintas estructuras de filas;
-- usa expresiones regulares como fallback;
-- normaliza publicaciones a dataclasses;
-- elimina duplicados;
-- ejecuta parsing en un `ProcessPoolExecutor` reutilizable;
-- usa como máximo el número de CPU disponibles, con mínimo de un worker.
-
-### 11.3 Carga
-
-`src/core/services/scraper/loader.py`:
-
-- separa persistencia mediante el protocolo `ScraperDataStore`;
-- convierte precios a `Decimal`;
-- permite probar la carga con stores falsos;
-- implementa `SQLAlchemyScraperStore` para PostgreSQL;
-- realiza upsert y commit del lote.
-
-Esta separación mantiene abierta la posibilidad de ejecutar el pipeline fuera del proceso de API en el futuro.
-
-### 11.4 Integración con la búsqueda
-
-`src/core/services/scraper/search.py` adapta extracción y transformación al protocolo `CardListingSearch`. El caso de uso de búsqueda lo invoca únicamente cuando el caché y PostgreSQL no contienen resultados.
-
-La búsqueda interactiva responde y almacena el resultado en caché, pero no ejecuta la etapa de carga. Persistir publicaciones sigue siendo una operación separada para no convertir una petición de usuario en una escritura implícita del pipeline.
+Si en el futuro los servicios dejan de compartir base de datos, esta frontera
+deberá reemplazarse por un contrato remoto y una estrategia explícita para la
+integridad referencial; ese cambio no se presupone en el diseño actual.
 
 ## 12) Caché
 
@@ -404,24 +339,16 @@ El lifecycle de FastAPI ejecuta `PING` al iniciar cuando Valkey está selecciona
 
 La invalidación por prefijo usa `SCAN` y elimina claves en lotes de 100; no ejecuta `KEYS` sobre el keyspace. Todas las claves reciben el namespace configurado, `free-win:` por defecto.
 
-Las respuestas de lectura de Cartas y Publicaciones usan un TTL actual de 300 segundos. Las mutaciones de Carta invalidan las claves de listas y actualizan o eliminan su clave individual.
+El caché permanece como capacidad compartida disponible para los componentes de
+Free Win. La extracción del buscador no elimina su configuración, lifecycle ni
+pruebas de proveedores.
 
 ## 13) Concurrencia y recursos
 
-El backend combina dos modelos:
-
-- **I/O async**: FastAPI, HTTPX, SQLAlchemy y asyncpg.
-- **CPU multiproceso**: parsing del HTML mediante `ProcessPoolExecutor`.
-
-Consideraciones actuales:
-
-- el límite de scraping es una constante global de 50;
-- el executor de parsing se crea de forma lazy y se reutiliza;
-- no existe todavía un hook documentado de shutdown para cerrar explícitamente el executor;
-- no existe una cola de tareas ni scheduler;
-- no se ha documentado un modelo de ejecución periódica del scraper.
-
-No debe añadirse infraestructura de workers antes de definir una necesidad concreta de reintentos, planificación, aislamiento o escalado.
+El backend mantiene I/O asíncrono en FastAPI, SQLAlchemy y asyncpg. El lifecycle
+inicia y cierra el proveedor de caché; las sesiones de base de datos conservan un
+alcance por solicitud. Free Win no mantiene executors, workers ni tareas de
+scraping.
 
 ## 14) Pruebas y herramientas de desarrollo
 
@@ -430,12 +357,11 @@ La suite utiliza pytest, declarado en `pyproject.toml`, y vive en `tests/`.
 Cobertura actual:
 
 - importación de FastAPI;
-- transformación del scraper;
-- normalización y carga mediante store falso;
 - caché en memoria;
 - adaptador Valkey mediante un cliente falso, sin red;
-- fallback de búsqueda de publicaciones;
-- error tipado al consultar una Carta inexistente.
+- reglas, autorización y contratos HTTP de Pedidos y Órdenes;
+- lectura de la proyección externa de `card_listings`;
+- aislamiento de tablas externas durante `autogenerate`.
 
 La dirección de pruebas async es AnyIO con backend `asyncio` y HTTPX `ASGITransport`. La estrategia completa está en `docs/testing.md`.
 
@@ -528,7 +454,6 @@ Los secretos deben permanecer en variables de entorno y nunca registrarse ni inc
 | `DBSettings` no expone atributos usados por la sesión | Arranque de persistencia incompleto | `docs/tech_context.md` |
 | Contrato de errores inconsistente | API difícil de consumir de forma uniforme | `docs/system_patterns.md` |
 | Solo identidad local temporal | API no preparada todavía para exposición pública | documento de seguridad futuro |
-| Sin lifecycle del executor | Recursos multiproceso sin cierre explícito | `docs/system_patterns.md` |
 | Sin despliegue ni CI definidos | Operación no reproducible | documento de despliegue futuro |
 
 Esta tabla describe el estado actual; no asigna prioridad automáticamente ni amplía el alcance de tareas futuras.
@@ -550,17 +475,17 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - **Contexto**: el proyecto necesita relaciones, consultas y upserts para datos de cartas y Pedidos.
 - **Decisión**: PostgreSQL es la base de datos principal, mediante SQLAlchemy y asyncpg.
 - **Impacto**: modelos, migraciones e integraciones pueden utilizar capacidades propias de PostgreSQL de manera consciente.
-- **Evidencia**: `pyproject.toml`, `src/core/db/`, `src/core/services/scraper/loader.py`.
+- **Evidencia**: `pyproject.toml`, `src/core/db/`, `migrations/`.
 - **Revisión**: reevaluar si cambian de forma material los requisitos de persistencia.
 
-### DEC-20260720-scraper-colocated
+### DEC-20260811-search-schema-ownership
 
-- **Fecha**: 2026-07-20.
-- **Contexto**: separar el pipeline prematuramente aumentaría la complejidad del flujo inicial.
-- **Decisión**: mantener el scraper dentro del backend con etapas y protocolos separables.
-- **Impacto**: comparte código y despliegue con la API, pero puede extraerse cuando exista una necesidad real.
-- **Evidencia**: `src/core/services/scraper/`.
-- **Revisión**: reevaluar si requiere despliegue, escalado o planificación independiente.
+- **Fecha**: 2026-08-11.
+- **Contexto**: la búsqueda de cartas fue extraída a un servicio independiente que conserva la misma base PostgreSQL.
+- **Decisión**: `free-win-search` posee sus tablas y usa `free_win_search_alembic_version`; Free Win conserva la FK, la proyección de lectura y excluye las tablas externas de `autogenerate`.
+- **Impacto**: el desacoplamiento de aplicación no rompe las relaciones existentes ni duplica la gestión del esquema.
+- **Evidencia**: `migrations/ownership.py`, `src/api/order_requests/repository/card_listings.py`.
+- **Revisión**: reevaluar si los servicios dejan de compartir PostgreSQL.
 
 ### DEC-20260722-local-authorization
 
@@ -580,9 +505,9 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - `src/settings/`: configuración.
 - `src/core/db/`: persistencia asíncrona.
 - `src/api/users/`: modelos y flujo CRUD actual.
-- `src/core/services/scraper/`: pipeline de cartas.
+- `src/api/order_requests/repository/card_listings.py`: proyección externa de Publicaciones.
+- `migrations/ownership.py`: tablas excluidas de las migraciones locales.
 - `src/core/services/cache/`: contrato de caché y proveedores en memoria/Valkey.
-- `src/core/services/ygopro_api.py`: integración con YGOPRODeck.
 - `tests/`: cobertura automatizada actual.
 - `docs/general_documentation.md`: dominio y estado funcional.
 - `docs/testing.md`: estrategia de pruebas.
@@ -602,7 +527,7 @@ Esta tabla describe el estado actual; no asigna prioridad automáticamente ni am
 - [ ] ¿Los routers y puntos de entrada siguen siendo correctos?
 - [ ] ¿Las variables y defaults coinciden con `src/settings/`?
 - [ ] ¿La descripción de persistencia coincide con `src/core/db/`?
-- [ ] ¿Las etapas y límites del scraper siguen vigentes?
+- [ ] ¿El límite con `free-win-search` y sus tablas externas sigue vigente?
 - [ ] ¿Una brecha conocida fue resuelta, reemplazada o ampliada?
 - [ ] ¿Cambió el modelo de despliegue, observabilidad o seguridad?
 - [ ] ¿Una decisión técnica necesita añadirse o revisarse?

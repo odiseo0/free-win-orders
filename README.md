@@ -2,7 +2,7 @@
 
 Backend de la aplicación comunitaria Free Win para gestionar pedidos de cartas de Yu-Gi-Oh! difíciles de conseguir en el país.
 
-Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes por parte de los jugadores y su posterior revisión por los administradores. El proyecto también contiene un pipeline de scraping para buscar cartas y preparar información que eventualmente pueda consultarse desde una base de datos propia.
+Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes por parte de los jugadores y su posterior revisión por los administradores. La búsqueda y carga de cartas vive en el servicio separado [`free-win-search`](https://github.com/odiseo0/free-win-search); ambos backends comparten PostgreSQL y las Órdenes referencian sus publicaciones mediante `card_listings`.
 
 ## Stack actual
 
@@ -19,9 +19,9 @@ Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes po
 src/
 ├── application.py        # Punto de entrada de FastAPI
 ├── api/                 # Componentes y endpoints de la API
-│   ├── cards/
-│   ├── collections/
 │   ├── order_periods/
+│   ├── order_requests/
+│   ├── roles/
 │   └── users/
 ├── core/                # Base de datos, servicios y utilidades compartidas
 └── settings/            # Configuración de la aplicación
@@ -39,8 +39,7 @@ Los componentes de `src/api/` siguen una arquitectura hexagonal pragmática:
 └── repository/          # Persistencia y acceso a datos
 ```
 
-El scraper está implementado en `src/core/services/scraper/`.
-El caché vive en `src/core/services/cache/` y permite alternar entre memoria y Valkey mediante `CACHE_BACKEND`.
+El caché vive en `src/core/services/cache/` y permite alternar entre memoria y Valkey mediante `CACHE_BACKEND`. La proyección de solo lectura usada para validar publicaciones externas está en `src/api/order_requests/repository/card_listings.py`.
 
 ## Documentación
 

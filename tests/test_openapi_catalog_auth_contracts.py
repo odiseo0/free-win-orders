@@ -92,7 +92,7 @@ def test_roles_document_system_immutability_and_permission_codes() -> None:
     assert "inmutable" in schemas["RoleResponse"]["properties"]["isSystem"][
         "description"
     ]
-    assert "recurso, acción y alcance" in schemas["PermissionResponse"][
+    assert "tabla compartida" in schemas["PermissionResponse"][
         "properties"
     ]["code"]["description"]
     assert "roles del sistema son inmutables" in paths[
