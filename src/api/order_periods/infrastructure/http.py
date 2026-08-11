@@ -228,6 +228,7 @@ async def read_order_periods(
 )
 async def read_order_period_history(
     db: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[Actor, Depends(require_actor(PermissionCode.ORDER_PERIODS_READ))],
     order_period_id: OrderPeriodId,
     page: Annotated[
         int,

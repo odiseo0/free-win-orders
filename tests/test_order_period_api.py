@@ -15,6 +15,7 @@ from src.api.order_periods.domain import (
     OrderPeriodResponse,
     OrderPeriodStatus,
 )
+from src.api.order_periods.domain import entities as order_period_entities
 from src.api.order_periods.infrastructure import http as order_period_http
 from src.api.roles.domain import USER_PERMISSIONS, Actor, PermissionCode
 from src.api.roles.infrastructure.auth import get_current_user
@@ -44,6 +45,12 @@ async def client() -> AsyncIterator[AsyncClient]:
 def clear_dependency_overrides() -> Generator[None]:
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def freeze_order_period_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(order_period_http, "datetime_now", lambda: NOW)
+    monkeypatch.setattr(order_period_entities, "datetime_now", lambda: NOW)
 
 
 async def fake_db() -> AsyncIterator[object]:
@@ -285,7 +292,6 @@ async def test_draft_and_its_history_are_hidden_from_regular_users(
     path: str,
 ) -> None:
     authenticate(USER)
-    monkeypatch.setattr(order_period_http, "datetime_now", lambda: NOW)
 
     async def get_one(*args: object, **kwargs: object) -> object:
         return Ok(period_response(status=OrderPeriodStatus.DRAFT))

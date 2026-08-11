@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql import Select
 
 from src.api.order_requests.repository import (
     CardListingReferenceDAO,
@@ -29,10 +30,14 @@ class RecordingDB:
     def __init__(self, row: dict[str, object] | None) -> None:
         self.row = row
         self.statements: list[object] = []
+        self.commits = 0
 
     async def execute(self, statement: object) -> MappingResult:
         self.statements.append(statement)
         return MappingResult(self.row)
+
+    async def commit(self) -> None:
+        self.commits += 1
 
 
 def _sql(statement: object) -> str:
@@ -74,7 +79,20 @@ async def test_get_snapshot_reads_only_the_order_snapshot_columns() -> None:
         rarity="Ultra Rare",
         condition="Near Mint",
     )
-    statement = _sql(db.statements[0])
+    assert len(db.statements) == 1
+    selected = db.statements[0]
+    assert isinstance(selected, Select)
+    assert list(selected.selected_columns.keys()) == [
+        "id",
+        "name",
+        "ygo_set",
+        "code",
+        "price",
+        "rarity",
+        "condition",
+    ]
+    assert db.commits == 0
+    statement = _sql(selected)
     assert "FROM card_listings" in statement
     assert "card_listings.id = 5" in statement
     assert "card_listings.stock" not in statement
@@ -88,3 +106,6 @@ async def test_get_snapshot_returns_empty_for_an_unknown_listing() -> None:
     result = await CardListingReferenceDAO().get_snapshot(db, 404)
 
     assert result is Empty
+    assert len(db.statements) == 1
+    assert isinstance(db.statements[0], Select)
+    assert db.commits == 0

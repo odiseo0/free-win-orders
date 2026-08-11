@@ -9,6 +9,14 @@ from src.api.roles.domain import (
 )
 from src.api.users.domain import UserCreate, UserResponse, UserUpdate
 
+SEARCH_PERMISSION_CODES = {
+    "cards.read",
+    "cards.create",
+    "cards.update",
+    "cards.delete",
+    "card_listings.read",
+}
+
 
 def test_registration_rejects_role_escalation() -> None:
     with pytest.raises(ValidationError):
@@ -53,6 +61,14 @@ def test_permission_contract_accepts_controlled_codes() -> None:
         PermissionCode.USERS_READ_SELF,
         PermissionCode.ORDER_PERIODS_READ,
     ]
+
+
+def test_search_permissions_are_not_assignable_by_this_backend() -> None:
+    assert SEARCH_PERMISSION_CODES.isdisjoint(code.value for code in PermissionCode)
+
+    for code in SEARCH_PERMISSION_CODES:
+        with pytest.raises(ValidationError):
+            RolePermissionsUpdate.model_validate({"permissions": [code]})
 
 
 def test_responses_accept_permissions_owned_by_another_service() -> None:

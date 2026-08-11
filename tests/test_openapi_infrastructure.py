@@ -34,6 +34,13 @@ def test_search_service_routes_and_schemas_are_not_exposed() -> None:
         "CardListingResponse",
         "CardResponse",
     }
+    search_permission_codes = {
+        "cards.read",
+        "cards.create",
+        "cards.update",
+        "cards.delete",
+        "card_listings.read",
+    }
 
     assert not any(
         path.startswith(("/cards", "/card-listings"))
@@ -46,6 +53,9 @@ def test_search_service_routes_and_schemas_are_not_exposed() -> None:
     assert "cardListingId" in schema["components"]["schemas"][
         "OrderRequestItemCreate"
     ]["properties"]
+    assert search_permission_codes.isdisjoint(
+        schema["components"]["schemas"]["PermissionCode"]["enum"]
+    )
 
 
 def test_openapi_operation_ids_are_unique() -> None:
