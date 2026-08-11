@@ -1,28 +1,24 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator, Generic, Literal, TypedDict, TypeVar, Unpack, cast
+from typing import Any, Literal, TypedDict, Unpack, cast
 
 from pydantic import BaseModel
-from sqlalchemy import asc
+from sqlalchemy import asc, desc, insert
 from sqlalchemy import delete as sql_delete
-from sqlalchemy import desc
 from sqlalchemy import func as sql_func
-from sqlalchemy import insert
 from sqlalchemy import update as sql_update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, RelationshipProperty, strategy_options
 from sqlalchemy.sql import Select, select
 
-from src.core.utils.filters import  FilterTypes, OrderBy
+from src.core.utils.filters import OrderBy
 from src.core.utils.utils import Empty, EmptyType
 
 from .model import Base
 
-ModelType = TypeVar("ModelType", bound=Base)
-CreateSchema = TypeVar("CreateSchema", bound=BaseModel)
-UpdateSchema = TypeVar("UpdateSchema", bound=BaseModel)
 StrategyOptions = Literal[
     "contains_eager",
     "defaultload",
@@ -91,7 +87,7 @@ def catch_sqlalchemy_exception() -> Generator[None]:
         raise DAOError from error
 
 
-class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
+class DAO[ModelType: Base, CreateSchema: BaseModel, UpdateSchema: BaseModel]:
     def __init__(
         self,
         model: type[ModelType],
@@ -112,9 +108,8 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
     ) -> ModelType | EmptyType:
         statement = select(self.model).where(self.model.id == _id)
 
-        effective_options = (
-            options if options is not None else self.default_options
-        )
+        effective_options = options if options is not None else self.default_options
+
         if effective_options is not None:
             statement = self.options(statement, effective_options)
 
@@ -176,7 +171,6 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
         shows: int | None = 100,
         ordering: list[tuple[str, bool]] | None = None,
         options: list[tuple[str, StrategyOptions]] | None = None,
-        complex_filters: list[FilterTypes] | None = None,
         **kwargs: Unpack[Kwargs],
     ) -> tuple[list[ModelType], int]:
         statement = select(self.model)
@@ -234,8 +228,10 @@ class DAO(Generic[ModelType, CreateSchema, UpdateSchema]):
                 await db.commit()
 
         created = await self.get(db, obj_id, options)
+
         if created is Empty:
             raise DAOError("El registro creado no pudo recuperarse")
+
         return created
 
     async def add(

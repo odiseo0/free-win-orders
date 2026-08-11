@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import Awaitable
 from datetime import datetime
 from typing import Any, TypeVar
 
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    declarative_mixin,
+    mapped_column,
+)
 from sqlalchemy.orm import registry as _registry
 from sqlalchemy.util import greenlet_spawn
 
@@ -45,7 +50,7 @@ class AwaitAttrs:
         return await greenlet_spawn(
             getattr,
             self,
-            attr.key, # type: ignore
+            attr.key,  # type: ignore
         )
 
 
@@ -60,8 +65,8 @@ class Base(AwaitAttrs, DeclarativeBase):
         return pluralize(to_snake(cls.__name__))
 
 
-@dataclasses.dataclass
-class Date:
+@declarative_mixin
+class Date(MappedAsDataclass):
     date_added: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default_factory=datetime_now,
