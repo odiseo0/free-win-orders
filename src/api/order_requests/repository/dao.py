@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -21,15 +20,7 @@ from .models import OrderRequest, OrderRequestHistory, OrderRequestItem
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class CardListingSnapshot(Protocol):
-    id: int
-    name: str
-    ygo_set: str
-    code: str
-    rarity: str
-    condition: str
-    price: Decimal
+    from .card_listings import CardListingSnapshot
 
 
 class OrderRequestDAO(DAO[OrderRequest, BaseModel, BaseModel]):

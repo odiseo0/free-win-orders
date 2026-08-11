@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, cast
 
-from src.api.cards.repository import dao_card_listings as listing_dao
 from src.api.order_periods.domain import (
     OrderPeriodNotFound,
     OrderPeriodStatus,
@@ -39,6 +38,9 @@ from src.api.order_requests.domain import (
     can_restore_order_request_item,
     can_transition_order_request,
 )
+from src.api.order_requests.repository import (
+    dao_card_listing_references as listing_dao,
+)
 from src.api.order_requests.repository import dao_order_request_histories as history_dao
 from src.api.order_requests.repository import dao_order_request_items as item_dao
 from src.api.order_requests.repository import dao_order_requests as request_dao
@@ -50,9 +52,8 @@ from src.core.utils.utils import Empty, datetime_now
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from src.api.cards.repository import CardListing
     from src.api.order_periods.repository import OrderPeriod
-    from src.api.order_requests.repository import OrderRequest
+    from src.api.order_requests.repository import CardListingSnapshot, OrderRequest
 
 
 type CreateOrderRequestError = (
@@ -231,10 +232,10 @@ async def create(
     if period_status is not OrderPeriodStatus.OPEN:
         return Err(OrderRequestPeriodNotOpen(request_in.order_period_id))
 
-    listings: dict[int, CardListing] = {}
+    listings: dict[int, CardListingSnapshot] = {}
 
     for item_in in request_in.items:
-        listing = await listing_dao.get(db, item_in.card_listing_id)
+        listing = await listing_dao.get_snapshot(db, item_in.card_listing_id)
 
         if listing is Empty:
             return Err(OrderRequestCardListingNotFound(item_in.card_listing_id))
@@ -414,7 +415,7 @@ async def add_item(
     if any(item.card_listing_id == item_in.card_listing_id for item in request.items):
         return Err(OrderRequestItemAlreadyExists(request.id, item_in.card_listing_id))
 
-    listing = await listing_dao.get(db, item_in.card_listing_id)
+    listing = await listing_dao.get_snapshot(db, item_in.card_listing_id)
 
     if listing is Empty:
         return Err(OrderRequestCardListingNotFound(item_in.card_listing_id))

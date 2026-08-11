@@ -134,7 +134,7 @@ class ListingDAO:
         self.listings = listings
         self.requested: list[int] = []
 
-    async def get(self, db: object, listing_id: int) -> object:
+    async def get_snapshot(self, db: object, listing_id: int) -> object:
         self.requested.append(listing_id)
         return self.listings.get(listing_id, Empty)
 

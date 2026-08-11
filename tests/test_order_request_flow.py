@@ -48,7 +48,7 @@ class PeriodDAO:
 
 
 class ListingDAO:
-    async def get(self, db: object, listing_id: int) -> object:
+    async def get_snapshot(self, db: object, listing_id: int) -> object:
         if listing_id != 5:
             return Empty
         return SimpleNamespace(

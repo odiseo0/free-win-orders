@@ -30,6 +30,7 @@ class Card(Date, Base, kw_only=True):
 class CardListing(Date, Base, kw_only=True):
     __table_args__ = (
         UniqueConstraint("code", "condition", name="uq_card_listings_code_condition"),
+        {"extend_existing": True},
     )
 
     id: Mapped[int] = mapped_column(
