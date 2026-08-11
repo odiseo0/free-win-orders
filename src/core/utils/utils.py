@@ -15,7 +15,7 @@ class CardListing(Protocol):
 
 def deduplicate_listings(listings: list["CardListing"]) -> list["CardListing"]:
     seen: set[tuple[str, str, str]] = set()
-    unique: list["CardListing"] = []
+    unique: list[CardListing] = []
 
     for listing in listings:
         key = (listing.code, listing.condition, listing.price)

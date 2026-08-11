@@ -37,14 +37,14 @@ def test_user_response_never_exposes_password() -> None:
 
 def test_permission_contract_rejects_unknown_codes() -> None:
     with pytest.raises(ValidationError):
-        RolePermissionsUpdate.model_validate({"permissions": ["cards.publish"]})
+        RolePermissionsUpdate.model_validate({"permissions": ["catalog.publish"]})
 
 
 def test_permission_contract_accepts_controlled_codes() -> None:
     contract = RolePermissionsUpdate(
-        permissions=[PermissionCode.CARDS_READ, PermissionCode.CARD_LISTINGS_READ]
+        permissions=[PermissionCode.USERS_READ_SELF, PermissionCode.ORDER_PERIODS_READ]
     )
     assert contract.permissions == [
-        PermissionCode.CARDS_READ,
-        PermissionCode.CARD_LISTINGS_READ,
+        PermissionCode.USERS_READ_SELF,
+        PermissionCode.ORDER_PERIODS_READ,
     ]

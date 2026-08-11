@@ -1,4 +1,6 @@
-from src.api.cards.repository.model import Card, CardListing  # noqa: F401
+from src.api.order_requests.repository.card_listings import (  # noqa: F401
+    card_listings,
+)
 from src.api.order_periods.repository.models import (  # noqa: F401
     OrderPeriod,
     OrderPeriodHistory,

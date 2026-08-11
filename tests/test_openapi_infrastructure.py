@@ -44,8 +44,6 @@ def test_openapi_exposes_project_metadata_and_ordered_tags() -> None:
     assert [tag["name"] for tag in schema["tags"]] == [
         "order-periods",
         "order-requests",
-        "cards",
-        "card-listings",
         "users",
         "user-addresses",
         "roles",
@@ -69,8 +67,6 @@ def test_shared_http_models_describe_errors_validation_and_pagination() -> None:
         "UserListResponse",
         "UserAddressListResponse",
         "UserRoleListResponse",
-        "CardListResponse",
-        "CardListingListResponse",
         "OrderPeriodListResponse",
         "OrderRequestListResponse",
     } <= components.keys()

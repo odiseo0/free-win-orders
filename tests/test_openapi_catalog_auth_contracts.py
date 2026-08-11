@@ -10,20 +10,8 @@ def _operations_for_tag(tag: str) -> Iterator[dict[str, object]]:
                 yield operation
 
 
-def test_catalog_users_and_authorization_have_stable_operation_ids() -> None:
+def test_users_and_authorization_have_stable_operation_ids() -> None:
     expected = {
-        "cards": {
-            "listCards",
-            "getCard",
-            "createCard",
-            "updateCard",
-            "deleteCard",
-        },
-        "card-listings": {
-            "searchCardListings",
-            "listCardListings",
-            "getCardListing",
-        },
         "users": {
             "listUsers",
             "getUser",
@@ -61,8 +49,6 @@ def test_catalog_users_and_authorization_have_stable_operation_ids() -> None:
 
 def test_stage_four_operations_have_spanish_documentation() -> None:
     tags = (
-        "cards",
-        "card-listings",
         "users",
         "user-addresses",
         "roles",
@@ -76,18 +62,6 @@ def test_stage_four_operations_have_spanish_documentation() -> None:
 
     assert all(operation.get("summary") for operation in operations)
     assert all(operation.get("description") for operation in operations)
-
-
-def test_card_contract_documents_external_and_unlinked_data() -> None:
-    schemas = app.openapi()["components"]["schemas"]
-    card = schemas["CardResponse"]["properties"]
-    listing = schemas["CardListingResponse"]["properties"]
-
-    assert "fuente externa" in card["sets"]["description"]
-    assert "precio definitivo" in card["prices"]["description"]
-    assert "nula" in listing["cardId"]["description"]
-    assert "USD" in listing["price"]["description"]
-    assert "stock" in listing["stock"]["description"]
 
 
 def test_password_is_write_only_and_absent_from_user_responses() -> None:
@@ -136,7 +110,6 @@ def test_legacy_user_roles_remain_deprecated_without_stage_four_changes() -> Non
 def test_delete_contracts_return_204_without_content() -> None:
     paths = app.openapi()["paths"]
 
-    assert "content" not in paths["/cards/{card_id}"]["delete"]["responses"]["204"]
     assert "content" not in paths["/users/{user_id}"]["delete"]["responses"]["204"]
     assert "content" not in paths[
         "/user-addresses/{user_address_id}"

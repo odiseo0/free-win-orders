@@ -6,7 +6,7 @@ from src.api.users.repository import UserRole
 
 
 def test_date_updated_is_optional_when_constructing_models() -> None:
-    permission = Permission(code="cards.read", description="Permite leer cartas.")
+    permission = Permission(code="users.read.any", description="Permite leer usuarios.")
     role = Role(name="User", description=None, is_system=True)
     bridge = UserRole(role_id=1)
 

@@ -18,12 +18,6 @@ class PermissionCode(StrEnum):
     ADDRESSES_DELETE_ANY = "addresses.delete.any"
     ADDRESSES_DELETE_SELF = "addresses.delete.self"
 
-    CARDS_READ = "cards.read"
-    CARDS_CREATE = "cards.create"
-    CARDS_UPDATE = "cards.update"
-    CARDS_DELETE = "cards.delete"
-    CARD_LISTINGS_READ = "card_listings.read"
-
     ROLES_READ = "roles.read"
     ROLES_CREATE = "roles.create"
     ROLES_UPDATE = "roles.update"
@@ -53,8 +47,6 @@ USER_PERMISSIONS = frozenset(
         PermissionCode.ADDRESSES_CREATE_SELF,
         PermissionCode.ADDRESSES_UPDATE_SELF,
         PermissionCode.ADDRESSES_DELETE_SELF,
-        PermissionCode.CARDS_READ,
-        PermissionCode.CARD_LISTINGS_READ,
         PermissionCode.ORDER_PERIODS_READ,
         PermissionCode.ORDER_REQUESTS_READ_SELF,
         PermissionCode.ORDER_REQUESTS_CREATE_SELF,

@@ -5,8 +5,6 @@ PAGINATED_PATHS = (
     "/users/",
     "/user-addresses/",
     "/user-roles/",
-    "/cards/",
-    "/card-listings/",
 )
 
 
@@ -31,10 +29,10 @@ def test_paginated_lists_use_items_total_and_one_based_limits() -> None:
         assert parameters["shows"]["schema"]["maximum"] == 100
 
 
-def test_non_paginated_catalogs_and_search_remain_arrays() -> None:
+def test_non_paginated_catalogs_remain_arrays() -> None:
     paths = app.openapi()["paths"]
 
-    for path in ("/roles/", "/permissions/", "/card-listings/search"):
+    for path in ("/roles/", "/permissions/"):
         response_schema = paths[path]["get"]["responses"]["200"]["content"][
             "application/json"
         ]["schema"]
@@ -58,7 +56,6 @@ def test_successful_deletes_return_204_without_content() -> None:
         "/users/{user_id}",
         "/user-addresses/{user_address_id}",
         "/user-roles/{user_role_id}",
-        "/cards/{card_id}",
         "/roles/{role_id}",
     )
 
@@ -75,7 +72,6 @@ def test_resource_creations_return_201() -> None:
         "/users/",
         "/user-addresses/",
         "/user-roles/",
-        "/cards/",
         "/roles/",
         "/order-periods/",
         "/order-requests/",

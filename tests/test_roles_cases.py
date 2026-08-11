@@ -246,7 +246,7 @@ async def test_replace_permissions_uses_catalog_and_association_daos(
     monkeypatch.setattr(roles_cases, "dao_role_permissions", association_dao)
 
     result = await roles_cases.replace_permissions(
-        object(), role.id, [PermissionCode.CARDS_READ]
+        object(), role.id, [PermissionCode.USERS_READ_ANY]
     )
 
     assert result == Ok(role)

@@ -1,10 +1,7 @@
 from src.core.constants import (
-    BASE_URL,
-    BASE_URL_SEARCH,
     DELAY_BETWEEN_REQUESTS_SECONDS,
     REQUEST_TIMEOUT_SECONDS,
     USER_AGENT,
-    YGO_API_URL,
 )
 from src.core.utils.serializers import (
     add_timezone_to_datetime,
