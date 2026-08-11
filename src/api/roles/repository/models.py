@@ -20,7 +20,7 @@ class RolePermission(MappedAsDataclass, Base, kw_only=True):
     )
 
 
-class Permission(MappedAsDataclass, Base, Date, kw_only=True):
+class Permission(Date, Base, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger, init=False, autoincrement=True, primary_key=True
     )
@@ -33,7 +33,7 @@ class Permission(MappedAsDataclass, Base, Date, kw_only=True):
     )
 
 
-class Role(MappedAsDataclass, Base, Date, kw_only=True):
+class Role(Date, Base, kw_only=True):
     __table_args__ = (UniqueConstraint("name", name="uq_roles_name"),)
 
     id: Mapped[int] = mapped_column(

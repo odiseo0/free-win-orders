@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationshi
 from src.core.db import Base, Date
 
 
-class OrderPeriod(MappedAsDataclass, Base, Date, kw_only=True):
+class OrderPeriod(Date, Base, kw_only=True):
     __table_args__ = (
         CheckConstraint("opens_at < closes_at", name="valid_date_range"),
         Index("ix_order_periods_opens_at", "opens_at"),

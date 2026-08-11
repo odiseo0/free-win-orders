@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationshi
 from src.core.db import Base, Date
 
 
-class OrderRequest(MappedAsDataclass, Base, Date, kw_only=True):
+class OrderRequest(Date, Base, kw_only=True):
     __table_args__ = (
         CheckConstraint(
             "status IN ('submitted', 'in_review', 'accepted', 'rejected', 'cancelled')",
@@ -79,7 +79,7 @@ class OrderRequest(MappedAsDataclass, Base, Date, kw_only=True):
     )
 
 
-class OrderRequestItem(MappedAsDataclass, Base, Date, kw_only=True):
+class OrderRequestItem(Date, Base, kw_only=True):
     __table_args__ = (
         UniqueConstraint(
             "order_request_id",

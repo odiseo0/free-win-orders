@@ -4,12 +4,12 @@ from decimal import Decimal
 
 from sqlalchemy import BigInteger, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db import Base, Date
 
 
-class Card(MappedAsDataclass, Base, Date, kw_only=True):
+class Card(Date, Base, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger,
         init=False,
@@ -27,7 +27,7 @@ class Card(MappedAsDataclass, Base, Date, kw_only=True):
     images: Mapped[dict] = mapped_column(JSONB)
 
 
-class CardListing(MappedAsDataclass, Base, Date, kw_only=True):
+class CardListing(Date, Base, kw_only=True):
     __table_args__ = (
         UniqueConstraint("code", "condition", name="uq_card_listings_code_condition"),
     )

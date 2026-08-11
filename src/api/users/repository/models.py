@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
-from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db import Base, Date
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from src.api.roles.repository import Role
 
 
-class UserRole(MappedAsDataclass, Base, Date, kw_only=True):
+class UserRole(Date, Base, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger, init=False, autoincrement=True, primary_key=True
     )
@@ -34,7 +34,7 @@ class UserRole(MappedAsDataclass, Base, Date, kw_only=True):
     )
 
 
-class UserAddress(MappedAsDataclass, Base, Date, kw_only=True):
+class UserAddress(Date, Base, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger, init=False, autoincrement=True, primary_key=True
     )
@@ -50,7 +50,7 @@ class UserAddress(MappedAsDataclass, Base, Date, kw_only=True):
     user: Mapped["User"] = relationship("User", back_populates="addresses", init=False)
 
 
-class User(MappedAsDataclass, Base, Date, kw_only=True):
+class User(Date, Base, kw_only=True):
     id: Mapped[int] = mapped_column(
         BigInteger,
         init=False,
