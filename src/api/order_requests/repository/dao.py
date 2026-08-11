@@ -53,8 +53,10 @@ class OrderRequestDAO(DAO[OrderRequest, BaseModel, BaseModel]):
 
         if owner_user_id is not None:
             conditions.append(OrderRequest.created_by_user_id == owner_user_id)
+
         if order_period_id is not None:
             conditions.append(OrderRequest.order_period_id == order_period_id)
+
         if status is not None:
             conditions.append(OrderRequest.status == status)
 
@@ -87,12 +89,14 @@ class OrderRequestDAO(DAO[OrderRequest, BaseModel, BaseModel]):
             created_by_user_id=created_by_user_id,
             note=note,
         )
+
         return await self.add(db, request)
 
 
 class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
     def __init__(self) -> None:
         super().__init__(OrderRequestItem)
+
     async def get_for_request(
         self,
         db: AsyncSession,
@@ -144,12 +148,14 @@ class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
             requested_quantity=requested_quantity,
             agreed_quantity=requested_quantity,
         )
+
         return await self.add(db, item)
 
 
 class OrderRequestHistoryDAO(DAO[OrderRequestHistory, BaseModel, BaseModel]):
     def __init__(self) -> None:
         super().__init__(OrderRequestHistory)
+
     async def get_for_request(
         self,
         db: AsyncSession,
@@ -185,6 +191,7 @@ class OrderRequestHistoryDAO(DAO[OrderRequestHistory, BaseModel, BaseModel]):
             occurred_at=occurred_at or datetime_now(),
             changes=changes,
         )
+
         return await self.add(db, history)
 
 

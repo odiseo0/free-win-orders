@@ -225,6 +225,7 @@ async def close(
 
     if status is OrderPeriodStatus.DRAFT:
         return Err(OrderPeriodCannotCloseDraft(order_period_id))
+
     if status is OrderPeriodStatus.CLOSED:
         return Err(OrderPeriodAlreadyClosed(order_period_id))
 

@@ -31,16 +31,6 @@ OPENAPI_TAGS = [
         "description": "Envío y revisión de Órdenes dentro de un Pedido.",
     },
     {
-        "name": "cards",
-        "description": "Catálogo propio de cartas de Yu-Gi-Oh!.",
-    },
-    {
-        "name": "card-listings",
-        "description": (
-            "Publicaciones y resultados externos disponibles para una carta."
-        ),
-    },
-    {
         "name": "users",
         "description": "Usuarios que participan en Pedidos y administran Free Win.",
     },

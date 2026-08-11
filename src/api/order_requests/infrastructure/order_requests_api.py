@@ -295,6 +295,7 @@ async def accept_order_request(
     order_request_id: OrderRequestId,
 ) -> OrderRequestResponse:
     result = await order_request_cases.accept(db, actor, order_request_id)
+
     match result:
         case Ok(request):
             return request
@@ -415,6 +416,7 @@ async def update_order_request_item_pricing(
         item_id,
         pricing_in,
     )
+
     match result:
         case Ok(request):
             return request
