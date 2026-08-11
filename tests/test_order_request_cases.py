@@ -606,6 +606,34 @@ async def test_add_item_copies_snapshot_and_audits_in_one_transaction(
 
 
 @pytest.mark.anyio
+async def test_add_item_rejects_missing_listing_without_writing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = FakeRequest(items=[])
+    _, listing_dao, _, item_dao, history_dao = install_daos(
+        monkeypatch,
+        request=request,
+        listings={},
+    )
+    db = FakeDB()
+
+    result = await order_request_cases.add_item(
+        db,
+        USER,
+        17,
+        OrderRequestItemCreate(card_listing_id=99, requested_quantity=1),
+    )
+
+    assert result == Err(OrderRequestCardListingNotFound(99))
+    assert listing_dao.requested == [99]
+    assert item_dao.created == []
+    assert history_dao.created == []
+    assert request.items == []
+    assert db.commits == 0
+    assert db.rollbacks == 0
+
+
+@pytest.mark.anyio
 async def test_remove_last_active_item_cancels_atomically(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

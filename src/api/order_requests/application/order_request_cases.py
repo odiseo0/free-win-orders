@@ -272,7 +272,7 @@ async def create(
         await db.rollback()
         raise
 
-    return Ok(request)
+    return Ok(_response(request))
 
 
 async def get_one(
@@ -681,7 +681,7 @@ async def start_review(
         target=OrderRequestStatus.IN_REVIEW,
         allowed_sources=frozenset({OrderRequestStatus.SUBMITTED}),
     )
-    print(result)
+
     return result
 
 
@@ -711,6 +711,7 @@ async def accept(
 
     if not active_items:
         return Err(OrderRequestCannotAccept("no_active_items"))
+
     if not can_accept_order_request(prices):
         return Err(OrderRequestCannotAccept("incomplete_pricing"))
 
