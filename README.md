@@ -2,7 +2,7 @@
 
 Backend de la aplicación comunitaria Free Win para gestionar pedidos de cartas de Yu-Gi-Oh! difíciles de conseguir en el país.
 
-Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes por parte de los jugadores y su posterior revisión por los administradores. La búsqueda y carga de cartas vive en el servicio separado [`free-win-search`](https://github.com/odiseo0/free-win-search); ambos backends comparten PostgreSQL y las Órdenes referencian sus publicaciones mediante `card_listings`.
+Free Win centraliza la apertura de períodos de Pedido, el envío de Órdenes por parte de los jugadores y su posterior revisión por los administradores. También gestiona los usuarios, roles y permisos propios de este backend. La búsqueda y carga de cartas vive en el servicio separado [`free-win-search`](https://github.com/odiseo0/free-win-search); ambos backends comparten PostgreSQL y las Órdenes referencian sus publicaciones mediante `card_listings`.
 
 ## Stack actual
 

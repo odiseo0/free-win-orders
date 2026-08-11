@@ -15,7 +15,7 @@ Este documento cubre:
 - arranque y ensamblaje de la API;
 - configuración mediante entorno;
 - acceso asíncrono a PostgreSQL;
-- pipeline de scraping y APIs externas;
+- límite con `free-win-search` y contrato de base compartida;
 - estado de migraciones, pruebas, despliegue y observabilidad;
 - brechas técnicas conocidas.
 
@@ -262,7 +262,9 @@ El engine utiliza `asyncpg` y configura el servidor con zona horaria `America/Ca
 
 Alembic está configurado en `migrations/`. Sus revisiones históricas se conservan
 sin modificaciones, incluida la revisión inicial `20260722_01` que permitía crear
-el esquema completo sobre una base vacía.
+el esquema completo sobre una base vacía. Esa historia sigue conteniendo la
+creación y modificaciones antiguas de `cards` y `card_listings`; los filtros de
+propiedad solo afectan la comparación y el `autogenerate` de revisiones nuevas.
 
 La propiedad vigente del esquema está dividida entre servicios. `free-win-search`
 administra `cards`, `card_listings`, sus tablas operativas de scraping e indexado,
@@ -275,6 +277,10 @@ alterar ni eliminar esas tablas.
 La tabla `permissions` continúa compartida. Los códigos utilizados exclusivamente
 por el servicio de búsqueda pueden permanecer persistidos aunque no formen parte
 del Enum de permisos reconocido por esta aplicación.
+
+No existe una baseline nueva ni un procedimiento de `stamp` para esta separación.
+Las bases existentes conservan su revisión normal en `alembic_version`, mientras
+Search registra la suya en `free_win_search_alembic_version`.
 
 ## 9) Modelos y datos actuales
 
@@ -404,7 +410,30 @@ pdm run python -m src.api.roles.bootstrap --admin-user-id 123
 
 El bootstrap es idempotente. La variante con `--admin-user-id` revierte sus cambios si el ID no existe.
 
-### 15.2 Artefactos de despliegue
+### 15.2 Orden de migración de la base compartida
+
+En una base existente que ya tiene aplicado el historial de Free Win, despliega
+primero las migraciones de `free-win-search`. Su revisión `0001_base` comprueba y
+adopta `cards` y `card_listings` sin recrearlas; las revisiones posteriores las
+llevan al esquema vigente. Después ejecuta `alembic upgrade head` en Free Win.
+
+En una base completamente vacía, el historial actual requiere este orden de
+compatibilidad:
+
+1. Ejecutar `alembic upgrade head` en Free Win para crear el esquema histórico,
+   incluidas `cards`, `card_listings` y la FK de Órdenes.
+2. Ejecutar `alembic upgrade head` en `free-win-search`; `0001_base` adopta las dos
+   tablas y el resto de su historia aplica el esquema de búsqueda vigente.
+3. Ejecutar el bootstrap de roles de Free Win.
+4. Verificar por separado `alembic_version` y
+   `free_win_search_alembic_version`.
+
+Este orden inicial no cambia la propiedad futura: Search es el único servicio que
+debe generar nuevas migraciones para sus tablas. No ejecutes `stamp` ni borres una
+tabla de versión para simular la transferencia. Tampoco hagas downgrade de las
+tablas de Search mientras existan Órdenes que conserven la FK.
+
+### 15.3 Artefactos de despliegue
 
 El repositorio no contiene actualmente:
 

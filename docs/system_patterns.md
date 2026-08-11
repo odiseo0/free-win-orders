@@ -16,8 +16,8 @@ Este documento cubre:
 - casos de uso y resultados explícitos;
 - DAOs, modelos SQLAlchemy y sesiones;
 - filtros, paginación y carga de relaciones;
-- pipeline de scraping;
-- concurrencia async y multiproceso;
+- proyecciones de tablas administradas por otro servicio;
+- concurrencia y lifecycle asíncronos;
 - extensión de recursos siguiendo la estructura actual;
 - patrones incompletos que necesitan una decisión posterior.
 

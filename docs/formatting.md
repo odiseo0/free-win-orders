@@ -304,6 +304,7 @@ La descripción usa minúsculas y guiones. Si existen varias decisiones el mismo
 Cada decisión incluye:
 
 - **Fecha**: día en que se adoptó.
+- **Estado** (cuando aplique): usa `vigente` o `sustituida`; si está sustituida, enlaza la decisión que la reemplaza.
 - **Contexto**: problema o circunstancia.
 - **Decisión** o **Restricción**: lo que se acepta como cierto.
 - **Impacto**: consecuencias técnicas o funcionales.
@@ -321,6 +322,7 @@ Ejemplo:
 - **Impacto**: se conserva la FK sin duplicar migraciones.
 - **Evidencia**: `src/api/order_requests/repository/card_listings.py`.
 - **Revisión**: reevaluar si los servicios dejan de compartir base de datos.
+```
 
 ## 11) Documentos temporales y propuestas
 

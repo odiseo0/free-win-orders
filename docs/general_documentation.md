@@ -406,15 +406,27 @@ Para conocer el proyecto, el orden de lectura recomendado es:
 ### DEC-20260720-backend-only
 
 - **Fecha**: 2026-07-20.
+- **Estado**: vigente.
 - **Contexto**: el monorepo inicial añadía estructura para un cliente que todavía no forma parte del trabajo actual.
 - **Decisión**: este repositorio contiene exclusivamente el backend de Free Win.
 - **Impacto**: cualquier frontend futuro se desarrollará fuera de este repositorio salvo que se revise explícitamente la decisión.
 - **Evidencia**: `README.md`, `src/`.
 - **Revisión**: reconsiderar solamente si mantener ambos proyectos juntos aporta una ventaja concreta.
 
+### DEC-20260720-scraper-in-backend
+
+- **Fecha**: 2026-07-20.
+- **Estado**: sustituida por `DEC-20260811-search-service-separated`.
+- **Contexto**: el primer flujo de búsqueda y carga de cartas se implementó dentro de este backend.
+- **Decisión**: mantener temporalmente el scraper en `src/core/services/scraper/`, con límites que permitieran extraerlo después.
+- **Impacto**: esta decisión explica la presencia de migraciones históricas de cartas en Free Win, pero ya no describe su aplicación actual.
+- **Evidencia**: las revisiones históricas de `migrations/versions/` y el commit anterior a la extracción.
+- **Revisión**: cerrada el 2026-08-11 al trasladar búsqueda, scraping y propiedad futura del esquema a `free-win-search`.
+
 ### DEC-20260811-search-service-separated
 
 - **Fecha**: 2026-08-11.
+- **Estado**: vigente.
 - **Contexto**: la búsqueda y carga de cartas necesitan un ciclo de aplicación y migraciones independiente.
 - **Decisión**: `free-win-search` administra búsqueda, scraping, `cards` y `card_listings`; Free Win conserva solamente la FK y una proyección de lectura para snapshots de Órdenes.
 - **Impacto**: ambos servicios comparten PostgreSQL, pero no importan componentes de aplicación entre sí y utilizan tablas de versión Alembic distintas.
