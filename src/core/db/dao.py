@@ -303,8 +303,10 @@ class DAO[ModelType: Base, CreateSchema: BaseModel, UpdateSchema: BaseModel]:
                 await db.commit()
 
         updated = await self.get(db, obj_id, options)
+
         if updated is Empty:
             raise DAOError("El registro actualizado no pudo recuperarse")
+
         return updated
 
     async def delete(
@@ -368,9 +370,9 @@ class DAO[ModelType: Base, CreateSchema: BaseModel, UpdateSchema: BaseModel]:
                     statement = statement.join(field)
 
                 statement = statement.order_by(desc(field) if is_desc else asc(field))
-            except AttributeError as e:
+            except AttributeError:
                 # NOTE: Handle this error better.
-                raise Exception from e
+                raise DAOError("Error - OrderBy")
 
         return statement
 
@@ -389,7 +391,8 @@ class DAO[ModelType: Base, CreateSchema: BaseModel, UpdateSchema: BaseModel]:
                 statement = statement.options(
                     getattr(strategy_options, strat_op)(field)
                 )
-            except AttributeError as e:
-                raise Exception from e
+            except AttributeError:
+                # NOTE: Handle this error better.
+                raise DAOError("Error - Options")
 
         return statement
