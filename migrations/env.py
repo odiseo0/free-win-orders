@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy.engine import Connectable, Connection
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 import migrations.models  # noqa: F401
@@ -83,13 +83,14 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def do_run_migrations_async(connectable: Connectable) -> None:
+async def do_run_migrations_async(connectable: AsyncEngine) -> None:
     async with connectable.connect() as conn:
         await conn.run_sync(do_run_migrations)
 
 
 def run_migrations() -> None:
     connectable = context.config.attributes.get("connection")
+
     if not connectable:
         connectable = AsyncEngine(
             engine_from_config(
@@ -99,6 +100,7 @@ def run_migrations() -> None:
                 # connect_args={"ssl": ssl_context},
             ),
         )
+
     if isinstance(connectable, AsyncEngine):
         asyncio.run(do_run_migrations_async(connectable))
     else:
