@@ -10,10 +10,16 @@ from pydantic import Field, computed_field, field_validator, model_validator
 from src.core.schema import BaseModel, PaginatedResponse
 
 MONEY_QUANTUM = Decimal("0.01")
+DEFAULT_TAX_RATE = Decimal("0.16")
+DEFAULT_SHIPPING_UNIT_PRICE = Decimal("5.00")
 
 
 def quantize_usd(value: Decimal) -> Decimal:
     return value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def calculate_default_tax_unit_price(card_unit_price: Decimal) -> Decimal:
+    return quantize_usd(card_unit_price * DEFAULT_TAX_RATE)
 
 
 class OrderRequestStatus(StrEnum):
@@ -129,14 +135,22 @@ class OrderRequestItemPricingUpdate(BaseModel):
         examples=["3.50"],
     )
     shipping_unit_price: Decimal = Field(
+        default=DEFAULT_SHIPPING_UNIT_PRICE,
         ge=0,
-        description="Parte del envío asignada a una copia, en USD.",
-        examples=["0.75"],
+        description=(
+            "Parte del envío asignada a una copia, en USD. Si se omite, usa "
+            "USD 5,00."
+        ),
+        examples=["5.00"],
     )
     tax_unit_price: Decimal = Field(
+        default_factory=Decimal,
         ge=0,
-        description="Parte de impuestos asignada a una copia, en USD.",
-        examples=["0.28"],
+        description=(
+            "Parte de impuestos asignada a una copia, en USD. Si se omite, se "
+            "calcula como 16 % del precio unitario de la carta."
+        ),
+        examples=["0.56"],
     )
 
     @field_validator(
@@ -148,6 +162,15 @@ class OrderRequestItemPricingUpdate(BaseModel):
     @classmethod
     def normalize_money(cls, value: Decimal) -> Decimal:
         return quantize_usd(value)
+
+    @model_validator(mode="after")
+    def apply_default_tax(self) -> OrderRequestItemPricingUpdate:
+        if "tax_unit_price" not in self.model_fields_set:
+            self.tax_unit_price = calculate_default_tax_unit_price(
+                self.card_unit_price
+            )
+
+        return self
 
     @computed_field(
         description=(
@@ -180,11 +203,17 @@ class OrderRequestItemResponse(BaseModel):
     )
     shipping_unit_price: Decimal | None = Field(
         default=None,
-        description="Envío unitario en USD; nulo hasta su revisión.",
+        description=(
+            "Envío unitario en USD; comienza en USD 5,00 y puede ajustarse "
+            "durante la revisión."
+        ),
     )
     tax_unit_price: Decimal | None = Field(
         default=None,
-        description="Impuesto unitario en USD; nulo hasta su revisión.",
+        description=(
+            "Impuesto unitario en USD; comienza en 16 % del precio estimado y "
+            "puede ajustarse durante la revisión."
+        ),
     )
     removed_at: datetime | None = Field(
         default=None,

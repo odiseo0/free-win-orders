@@ -437,20 +437,18 @@ async def test_pricing_uses_camel_case_and_computes_values_server_side(
     )
     response = await client.patch(
         "/order-requests/17/items/1/pricing",
-        json={
-            "cardUnitPrice": "1.005",
-            "shippingUnitPrice": "0",
-            "taxUnitPrice": "0.20",
-        },
+        json={"cardUnitPrice": "10.00"},
     )
     pricing = captured["pricing"]
     assert response.status_code == 200
-    assert pricing.card_unit_price == Decimal("1.01")
-    assert pricing.final_unit_price == Decimal("1.21")
+    assert pricing.card_unit_price == Decimal("10.00")
+    assert pricing.shipping_unit_price == Decimal("5.00")
+    assert pricing.tax_unit_price == Decimal("1.60")
+    assert pricing.final_unit_price == Decimal("16.60")
 
 
 @pytest.mark.anyio
-async def test_pricing_rejects_null_negative_and_missing_components(
+async def test_pricing_rejects_null_negative_and_missing_card_price(
     client: AsyncClient,
 ) -> None:
     authenticate(ADMIN)
@@ -465,7 +463,7 @@ async def test_pricing_rejects_null_negative_and_missing_components(
             "shippingUnitPrice": "0",
             "taxUnitPrice": "0",
         },
-        {"cardUnitPrice": "1", "shippingUnitPrice": "0"},
+        {"shippingUnitPrice": "0", "taxUnitPrice": "0"},
     ):
         response = await client.patch(
             "/order-requests/17/items/1/pricing",

@@ -1,4 +1,6 @@
 from .entities import (
+    DEFAULT_SHIPPING_UNIT_PRICE,
+    DEFAULT_TAX_RATE,
     MONEY_QUANTUM,
     OrderRequestCreate,
     OrderRequestEventType,
@@ -12,6 +14,7 @@ from .entities import (
     OrderRequestResponse,
     OrderRequestStatus,
     OrderRequestUpdate,
+    calculate_default_tax_unit_price,
     quantize_usd,
 )
 from .errors import (
@@ -39,6 +42,8 @@ from .rules import (
 )
 
 __all__ = [
+    "DEFAULT_SHIPPING_UNIT_PRICE",
+    "DEFAULT_TAX_RATE",
     "MONEY_QUANTUM",
     "OrderRequestAccessDenied",
     "OrderRequestCannotAccept",
@@ -65,6 +70,7 @@ __all__ = [
     "OrderRequestStatus",
     "OrderRequestUpdate",
     "PriceComponents",
+    "calculate_default_tax_unit_price",
     "can_accept_order_request",
     "can_access_order_request",
     "can_add_order_request_item",

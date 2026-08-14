@@ -8,8 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from src.api.order_requests.domain import (
+    DEFAULT_SHIPPING_UNIT_PRICE,
     OrderRequestEventType,
     OrderRequestStatus,
+    calculate_default_tax_unit_price,
     quantize_usd,
 )
 from src.core.db import DAO
@@ -127,6 +129,7 @@ class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
         listing: CardListingSnapshot,
         requested_quantity: int,
     ) -> OrderRequestItem:
+        estimated_unit_price = quantize_usd(listing.price)
         item = OrderRequestItem(
             order_request_id=order_request_id,
             card_listing_id=listing.id,
@@ -135,9 +138,11 @@ class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
             card_code=listing.code,
             rarity=listing.rarity,
             condition=listing.condition,
-            estimated_unit_price=quantize_usd(listing.price),
+            estimated_unit_price=estimated_unit_price,
             requested_quantity=requested_quantity,
             agreed_quantity=requested_quantity,
+            shipping_unit_price=DEFAULT_SHIPPING_UNIT_PRICE,
+            tax_unit_price=calculate_default_tax_unit_price(estimated_unit_price),
         )
 
         return await self.add(db, item)

@@ -158,6 +158,9 @@ async def test_create_item_copies_listing_snapshot_and_initial_quantity() -> Non
     assert item.estimated_unit_price == Decimal("8.51")
     assert item.requested_quantity == 3
     assert item.agreed_quantity == 3
+    assert item.card_unit_price is None
+    assert item.shipping_unit_price == Decimal("5.00")
+    assert item.tax_unit_price == Decimal("1.36")
     assert db.added == [item]
     assert db.flushes == 1
 

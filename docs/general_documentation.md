@@ -220,6 +220,13 @@ al menos un ítem activo y precios completos; cero es un importe válido. Cambia
 cantidades o precios después de aceptar recalcula los totales sin cambiar el
 estado automáticamente.
 
+Cada ítem nuevo comienza con USD 5,00 de envío por copia y un impuesto de 16 %
+sobre el precio estimado de la carta, redondeado a centavos. Al fijar el precio
+definitivo, el administrador debe indicar el precio unitario de la carta; si
+omite los otros componentes, el servidor vuelve a aplicar USD 5,00 y calcula el
+impuesto sobre ese precio definitivo. Ambos valores pueden enviarse
+explícitamente cuando una operación necesite una excepción.
+
 Cada mutación dependiente del estado bloquea la Orden y guarda su historial en la
 misma transacción. Retirar un ítem no lo elimina; si era el último activo, la
 Orden pasa a `cancelled`. Una operación sin cambios efectivos no genera un evento.

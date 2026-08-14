@@ -3337,7 +3337,7 @@
           "order-requests"
         ],
         "summary": "Fijar el precio definitivo de un ítem",
-        "description": "Sustituye los componentes unitarios de carta, envío e impuesto. El precio unitario final y los totales se calculan en servidor; cero es válido.",
+        "description": "Sustituye los componentes unitarios de carta, envío e impuesto. Si se omiten, el envío usa USD 5,00 por copia y el impuesto se calcula como 16 % del precio de la carta. El precio unitario final y los totales se calculan en servidor; cero es válido.",
         "operationId": "updateOrderRequestItemPricing",
         "parameters": [
           {
@@ -4084,9 +4084,10 @@
               }
             ],
             "title": "Shippingunitprice",
-            "description": "Parte del envío asignada a una copia, en USD.",
+            "description": "Parte del envío asignada a una copia, en USD. Si se omite, usa USD 5,00.",
+            "default": "5.00",
             "examples": [
-              "0.75"
+              "5.00"
             ]
           },
           "taxUnitPrice": {
@@ -4101,18 +4102,16 @@
               }
             ],
             "title": "Taxunitprice",
-            "description": "Parte de impuestos asignada a una copia, en USD.",
+            "description": "Parte de impuestos asignada a una copia, en USD. Si se omite, se calcula como 16 % del precio unitario de la carta.",
             "examples": [
-              "0.28"
+              "0.56"
             ]
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "cardUnitPrice",
-          "shippingUnitPrice",
-          "taxUnitPrice"
+          "cardUnitPrice"
         ],
         "title": "OrderRequestItemPricingUpdate"
       },
@@ -4193,7 +4192,7 @@
               }
             ],
             "title": "Shippingunitprice",
-            "description": "Envío unitario en USD; nulo hasta su revisión."
+            "description": "Envío unitario en USD; comienza en USD 5,00 y puede ajustarse durante la revisión."
           },
           "taxUnitPrice": {
             "anyOf": [
@@ -4206,7 +4205,7 @@
               }
             ],
             "title": "Taxunitprice",
-            "description": "Impuesto unitario en USD; nulo hasta su revisión."
+            "description": "Impuesto unitario en USD; comienza en 16 % del precio estimado y puede ajustarse durante la revisión."
           },
           "removedAt": {
             "anyOf": [

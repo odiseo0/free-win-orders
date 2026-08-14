@@ -75,6 +75,14 @@ def test_pricing_rounds_half_up_to_two_decimals() -> None:
     assert pricing.final_unit_price == Decimal("1.01")
 
 
+def test_pricing_applies_default_shipping_and_tax() -> None:
+    pricing = OrderRequestItemPricingUpdate(card_unit_price=Decimal("10.00"))
+
+    assert pricing.shipping_unit_price == Decimal("5.00")
+    assert pricing.tax_unit_price == Decimal("1.60")
+    assert pricing.final_unit_price == Decimal("16.60")
+
+
 def test_pricing_rejects_negative_components() -> None:
     with pytest.raises(ValidationError):
         OrderRequestItemPricingUpdate(

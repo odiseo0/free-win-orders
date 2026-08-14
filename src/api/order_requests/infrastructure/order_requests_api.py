@@ -394,8 +394,10 @@ async def reopen_order_request_for_review(
     operation_id="updateOrderRequestItemPricing",
     summary="Fijar el precio definitivo de un ítem",
     description=(
-        "Sustituye los componentes unitarios de carta, envío e impuesto. El precio "
-        "unitario final y los totales se calculan en servidor; cero es válido."
+        "Sustituye los componentes unitarios de carta, envío e impuesto. Si se "
+        "omiten, el envío usa USD 5,00 por copia y el impuesto se calcula como "
+        "16 % del precio de la carta. El precio unitario final y los totales se "
+        "calculan en servidor; cero es válido."
     ),
     responses=ITEM_ACTION_RESPONSES,
 )
