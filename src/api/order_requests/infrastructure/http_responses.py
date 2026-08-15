@@ -58,6 +58,12 @@ _ACCEPT_CONFLICT_RESPONSE = {
                         )
                     },
                 },
+                "missingShippingPrice": {
+                    "summary": "Envío sin establecer",
+                    "value": {
+                        "detail": "Debe establecerse el costo de envío de la Orden"
+                    },
+                },
             }
         }
     },
@@ -182,6 +188,11 @@ def _raise_mutation_error(error: object) -> None:
             raise HTTPException(
                 status_code=http_status.HTTP_409_CONFLICT,
                 detail="La Orden necesita al menos un ítem activo para aceptarse",
+            )
+        case OrderRequestCannotAccept(reason="missing_shipping_price"):
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail="Debe establecerse el costo de envío de la Orden",
             )
         case OrderRequestCannotAccept():
             raise HTTPException(

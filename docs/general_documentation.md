@@ -213,19 +213,20 @@ submitted → in_review → accepted
 accepted | rejected | cancelled → in_review
 ```
 
-Los precios definitivos se expresan en USD mediante los componentes unitarios de
-carta, envío e impuesto. El precio final, subtotales y total acordado se derivan
-de los ítems activos y no se persisten como totales independientes. Aceptar exige
-al menos un ítem activo y precios completos; cero es un importe válido. Cambiar
-cantidades o precios después de aceptar recalcula los totales sin cambiar el
-estado automáticamente.
+Los precios definitivos de cada ítem se expresan en USD mediante los componentes
+unitarios de carta e impuesto. El precio unitario final y el subtotal acordado se
+derivan de esos componentes y de la cantidad acordada. Si el administrador omite
+el impuesto al fijar el precio, el servidor calcula 16 % del precio unitario de
+la carta, redondeado a centavos. Un ítem nuevo conserva inicialmente ese mismo
+porcentaje calculado sobre el precio estimado de su Publicación.
 
-Cada ítem nuevo comienza con USD 5,00 de envío por copia y un impuesto de 16 %
-sobre el precio estimado de la carta, redondeado a centavos. Al fijar el precio
-definitivo, el administrador debe indicar el precio unitario de la carta; si
-omite los otros componentes, el servidor vuelve a aplicar USD 5,00 y calcula el
-impuesto sobre ese precio definitivo. Ambos valores pueden enviarse
-explícitamente cuando una operación necesite una excepción.
+El envío pertenece a la Orden mediante `shippingPrice`: es un costo total que se
+suma una sola vez, sin depender de la cantidad de copias ni del número de ítems.
+Permanece nulo al enviar la Orden, comienza en USD 5,00 al iniciar la revisión y
+puede modificarse, incluso a cero, mientras la Orden siga `in_review`. El total
+acordado suma los subtotales de los ítems activos y ese envío fijo; no se
+persiste como un total independiente. Aceptar exige al menos un ítem activo,
+precios unitarios completos y un costo de envío establecido.
 
 Cada mutación dependiente del estado bloquea la Orden y guarda su historial en la
 misma transacción. Retirar un ítem no lo elimina; si era el último activo, la

@@ -10,6 +10,7 @@ from src.api.order_periods.domain import (
 )
 from src.api.order_periods.repository import dao_order_periods as period_dao
 from src.api.order_requests.domain import (
+    DEFAULT_SHIPPING_PRICE,
     OrderRequestAccessDenied,
     OrderRequestCannotAccept,
     OrderRequestCardListingNotFound,
@@ -28,6 +29,7 @@ from src.api.order_requests.domain import (
     OrderRequestNotEditable,
     OrderRequestNotFound,
     OrderRequestPeriodNotOpen,
+    OrderRequestPricingUpdate,
     OrderRequestResponse,
     OrderRequestStatus,
     OrderRequestUpdate,
@@ -89,6 +91,9 @@ type PriceOrderRequestItemError = (
     | OrderRequestNotFound
     | OrderRequestItemNotFound
     | OrderRequestNotEditable
+)
+type PriceOrderRequestError = (
+    OrderRequestAccessDenied | OrderRequestNotFound | OrderRequestNotEditable
 )
 
 
@@ -596,7 +601,7 @@ async def restore_item(
         return Err(OrderRequestItemNotFound(request.id, item_id))
 
     status = OrderRequestStatus(request.status)
-    prices = (item.card_unit_price, item.shipping_unit_price, item.tax_unit_price)
+    prices = (item.card_unit_price, item.tax_unit_price)
 
     if not can_restore_order_request_item(status, prices):
         return Err(OrderRequestItemCannotBeRestored(status))
@@ -646,6 +651,10 @@ async def _change_review_status(
         return Err(OrderRequestInvalidTransition(current, target))
 
     changes = [_change("status", current.value, target.value)]
+
+    if target is OrderRequestStatus.IN_REVIEW and request.shipping_price is None:
+        request.shipping_price = DEFAULT_SHIPPING_PRICE
+        changes.append(_change("shippingPrice", None, DEFAULT_SHIPPING_PRICE))
 
     if target is OrderRequestStatus.IN_REVIEW and request.cancelled_at is not None:
         changes.extend(
@@ -705,7 +714,7 @@ async def accept(
 
     active_items = [item for item in request.items if item.removed_at is None]
     prices = [
-        (item.card_unit_price, item.shipping_unit_price, item.tax_unit_price)
+        (item.card_unit_price, item.tax_unit_price)
         for item in active_items
     ]
 
@@ -714,6 +723,9 @@ async def accept(
 
     if not can_accept_order_request(prices):
         return Err(OrderRequestCannotAccept("incomplete_pricing"))
+
+    if request.shipping_price is None:
+        return Err(OrderRequestCannotAccept("missing_shipping_price"))
 
     request.status = OrderRequestStatus.ACCEPTED
     await _commit_mutation(
@@ -846,7 +858,6 @@ async def update_pricing(
 
     for field, public_field in (
         ("card_unit_price", "cardUnitPrice"),
-        ("shipping_unit_price", "shippingUnitPrice"),
         ("tax_unit_price", "taxUnitPrice"),
     ):
         old_value = getattr(item, field)
@@ -865,6 +876,43 @@ async def update_pricing(
         event=OrderRequestEventType.ITEM_UPDATED,
         actor=actor,
         changes=changes,
+    )
+
+    return Ok(_response(request))
+
+
+async def update_order_pricing(
+    db: AsyncSession,
+    actor: Actor,
+    order_request_id: int,
+    pricing_in: OrderRequestPricingUpdate,
+) -> Result[OrderRequestResponse, PriceOrderRequestError]:
+    locked = await _get_locked_for_review(db, actor, order_request_id)
+
+    match locked:
+        case Err(error):
+            return Err(error)
+        case Ok(request):
+            pass
+
+    status = OrderRequestStatus(request.status)
+
+    if status is not OrderRequestStatus.IN_REVIEW:
+        return Err(OrderRequestNotEditable(status))
+
+    old_value = request.shipping_price
+    new_value = pricing_in.shipping_price
+
+    if old_value == new_value:
+        return Ok(_response(request))
+
+    request.shipping_price = new_value
+    await _commit_mutation(
+        db,
+        request=request,
+        event=OrderRequestEventType.UPDATED,
+        actor=actor,
+        changes=[_change("shippingPrice", old_value, new_value)],
     )
 
     return Ok(_response(request))

@@ -19,6 +19,7 @@ from src.api.order_requests.domain import (
     OrderRequestListResponse,
     OrderRequestNotFound,
     OrderRequestPeriodNotOpen,
+    OrderRequestPricingUpdate,
     OrderRequestResponse,
     OrderRequestStatus,
     OrderRequestUpdate,
@@ -224,7 +225,7 @@ async def remove_order_request_item(
     summary="Restaurar un ítem retirado",
     description=(
         "Reactiva un ítem retirado. En una Orden aceptada solo se permite cuando "
-        "los tres componentes de precio definitivo ya están completos."
+        "los componentes unitarios de carta e impuesto ya están completos."
     ),
     responses=ITEM_ACTION_RESPONSES,
 )
@@ -253,7 +254,8 @@ async def restore_order_request_item(
     summary="Iniciar la revisión administrativa",
     description=(
         "Cambia una Orden submitted a in_review. Requiere el permiso administrativo "
-        "de revisión y bloquea la Orden durante toda la transición."
+        "de revisión, establece USD 5,00 como envío sugerido si todavía es nulo y "
+        "bloquea la Orden durante toda la transición."
     ),
     responses=ORDER_ACTION_RESPONSES,
 )
@@ -282,7 +284,8 @@ async def start_order_request_review(
     summary="Aceptar una Orden revisada",
     description=(
         "Acepta una Orden in_review cuando conserva al menos un ítem activo y los "
-        "tres componentes de precio están completos en todos ellos."
+        "precios de carta e impuesto están completos en todos ellos. La Orden "
+        "también debe tener establecido su costo total de envío."
     ),
     responses=ACCEPT_ORDER_REQUEST_RESPONSES,
 )
@@ -388,16 +391,51 @@ async def reopen_order_request_for_review(
 
 
 @router.patch(
+    "/{order_request_id}/pricing",
+    status_code=http_status.HTTP_200_OK,
+    response_model=OrderRequestResponse,
+    operation_id="updateOrderRequestPricing",
+    summary="Fijar el costo de envío de una Orden",
+    description=(
+        "Sustituye el costo total de envío mientras la Orden está en revisión. "
+        "El importe se suma una sola vez, independientemente del número de ítems "
+        "o copias."
+    ),
+    responses=ORDER_ACTION_RESPONSES,
+)
+async def update_order_request_pricing(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[
+        Actor,
+        Depends(require_actor(PermissionCode.ORDER_REQUESTS_REVIEW)),
+    ],
+    order_request_id: OrderRequestId,
+    pricing_in: OrderRequestPricingUpdate,
+) -> OrderRequestResponse:
+    result = await order_request_cases.update_order_pricing(
+        db,
+        actor,
+        order_request_id,
+        pricing_in,
+    )
+
+    match result:
+        case Ok(request):
+            return request
+        case Err(error):
+            _raise_mutation_error(error)
+
+
+@router.patch(
     "/{order_request_id}/items/{item_id}/pricing",
     status_code=http_status.HTTP_200_OK,
     response_model=OrderRequestResponse,
     operation_id="updateOrderRequestItemPricing",
     summary="Fijar el precio definitivo de un ítem",
     description=(
-        "Sustituye los componentes unitarios de carta, envío e impuesto. Si se "
-        "omiten, el envío usa USD 5,00 por copia y el impuesto se calcula como "
-        "16 % del precio de la carta. El precio unitario final y los totales se "
-        "calculan en servidor; cero es válido."
+        "Sustituye los componentes unitarios de carta e impuesto. Si se omite el "
+        "impuesto, se calcula como 16 % del precio de la carta. El envío pertenece "
+        "a la Orden y no participa en este precio unitario; cero es válido."
     ),
     responses=ITEM_ACTION_RESPONSES,
 )

@@ -2795,7 +2795,7 @@
           "order-requests"
         ],
         "summary": "Restaurar un ítem retirado",
-        "description": "Reactiva un ítem retirado. En una Orden aceptada solo se permite cuando los tres componentes de precio definitivo ya están completos.",
+        "description": "Reactiva un ítem retirado. En una Orden aceptada solo se permite cuando los componentes unitarios de carta e impuesto ya están completos.",
         "operationId": "restoreOrderRequestItem",
         "parameters": [
           {
@@ -2893,7 +2893,7 @@
           "order-requests"
         ],
         "summary": "Iniciar la revisión administrativa",
-        "description": "Cambia una Orden submitted a in_review. Requiere el permiso administrativo de revisión y bloquea la Orden durante toda la transición.",
+        "description": "Cambia una Orden submitted a in_review. Requiere el permiso administrativo de revisión, establece USD 5,00 como envío sugerido si todavía es nulo y bloquea la Orden durante toda la transición.",
         "operationId": "startOrderRequestReview",
         "parameters": [
           {
@@ -2979,7 +2979,7 @@
           "order-requests"
         ],
         "summary": "Aceptar una Orden revisada",
-        "description": "Acepta una Orden in_review cuando conserva al menos un ítem activo y los tres componentes de precio están completos en todos ellos.",
+        "description": "Acepta una Orden in_review cuando conserva al menos un ítem activo y los precios de carta e impuesto están completos en todos ellos. La Orden también debe tener establecido su costo total de envío.",
         "operationId": "acceptOrderRequest",
         "parameters": [
           {
@@ -3051,6 +3051,12 @@
                     "summary": "Precios incompletos",
                     "value": {
                       "detail": "Todos los ítems activos deben tener precios completos"
+                    }
+                  },
+                  "missingShippingPrice": {
+                    "summary": "Envío sin establecer",
+                    "value": {
+                      "detail": "Debe establecerse el costo de envío de la Orden"
                     }
                   }
                 },
@@ -3331,13 +3337,109 @@
         }
       }
     },
+    "/order-requests/{order_request_id}/pricing": {
+      "patch": {
+        "tags": [
+          "order-requests"
+        ],
+        "summary": "Fijar el costo de envío de una Orden",
+        "description": "Sustituye el costo total de envío mientras la Orden está en revisión. El importe se suma una sola vez, independientemente del número de ítems o copias.",
+        "operationId": "updateOrderRequestPricing",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador positivo de la Orden.",
+              "title": "Order Request Id"
+            },
+            "description": "Identificador positivo de la Orden."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderRequestPricingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No existe una identidad autenticada válida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "La identidad no posee el permiso requerido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La Orden no existe o pertenece a otro Usuario.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La transición o sus precondiciones no son válidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "La entrada no cumple el contrato de la operación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/order-requests/{order_request_id}/items/{item_id}/pricing": {
       "patch": {
         "tags": [
           "order-requests"
         ],
         "summary": "Fijar el precio definitivo de un ítem",
-        "description": "Sustituye los componentes unitarios de carta, envío e impuesto. Si se omiten, el envío usa USD 5,00 por copia y el impuesto se calcula como 16 % del precio de la carta. El precio unitario final y los totales se calculan en servidor; cero es válido.",
+        "description": "Sustituye los componentes unitarios de carta e impuesto. Si se omite el impuesto, se calcula como 16 % del precio de la carta. El envío pertenece a la Orden y no participa en este precio unitario; cero es válido.",
         "operationId": "updateOrderRequestItemPricing",
         "parameters": [
           {
@@ -4072,24 +4174,6 @@
               "3.50"
             ]
           },
-          "shippingUnitPrice": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-              }
-            ],
-            "title": "Shippingunitprice",
-            "description": "Parte del envío asignada a una copia, en USD. Si se omite, usa USD 5,00.",
-            "default": "5.00",
-            "examples": [
-              "5.00"
-            ]
-          },
           "taxUnitPrice": {
             "anyOf": [
               {
@@ -4180,19 +4264,6 @@
             ],
             "title": "Cardunitprice",
             "description": "Precio definitivo de la carta en USD; nulo hasta su revisión."
-          },
-          "shippingUnitPrice": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Shippingunitprice",
-            "description": "Envío unitario en USD; comienza en USD 5,00 y puede ajustarse durante la revisión."
           },
           "taxUnitPrice": {
             "anyOf": [
@@ -4359,6 +4430,34 @@
         ],
         "title": "OrderRequestListResponse"
       },
+      "OrderRequestPricingUpdate": {
+        "properties": {
+          "shippingPrice": {
+            "anyOf": [
+              {
+                "type": "number",
+                "multipleOf": 0.01,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Shippingprice",
+            "description": "Costo total de envío de la Orden. Se aplica una sola vez, independientemente del número de ítems o copias.",
+            "examples": [
+              "5.00"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shippingPrice"
+        ],
+        "title": "OrderRequestPricingUpdate"
+      },
       "OrderRequestResponse": {
         "properties": {
           "id": {
@@ -4400,6 +4499,19 @@
             "examples": [
               "USD"
             ]
+          },
+          "shippingPrice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shippingprice",
+            "description": "Costo total de envío de la Orden. Es nulo hasta iniciar la revisión y se suma una sola vez al total acordado."
           },
           "cancelledAt": {
             "anyOf": [

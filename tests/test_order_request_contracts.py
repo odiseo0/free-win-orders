@@ -8,6 +8,7 @@ from src.api.order_requests.domain import (
     OrderRequestItemCreate,
     OrderRequestItemPricingUpdate,
     OrderRequestItemUpdate,
+    OrderRequestPricingUpdate,
     OrderRequestStatus,
 )
 
@@ -65,31 +66,46 @@ def test_item_update_rejects_empty_null_or_invalid_values(
 def test_pricing_rounds_half_up_to_two_decimals() -> None:
     pricing = OrderRequestItemPricingUpdate(
         card_unit_price=Decimal("1.005"),
-        shipping_unit_price=Decimal("0.004"),
         tax_unit_price=Decimal("0"),
     )
 
     assert pricing.card_unit_price == Decimal("1.01")
-    assert pricing.shipping_unit_price == Decimal("0.00")
     assert pricing.tax_unit_price == Decimal("0.00")
     assert pricing.final_unit_price == Decimal("1.01")
 
 
-def test_pricing_applies_default_shipping_and_tax() -> None:
+def test_item_pricing_applies_default_tax_without_shipping() -> None:
     pricing = OrderRequestItemPricingUpdate(card_unit_price=Decimal("10.00"))
 
-    assert pricing.shipping_unit_price == Decimal("5.00")
     assert pricing.tax_unit_price == Decimal("1.60")
-    assert pricing.final_unit_price == Decimal("16.60")
+    assert pricing.final_unit_price == Decimal("11.60")
 
 
 def test_pricing_rejects_negative_components() -> None:
     with pytest.raises(ValidationError):
         OrderRequestItemPricingUpdate(
             card_unit_price=Decimal("-0.01"),
-            shipping_unit_price=Decimal("0"),
             tax_unit_price=Decimal("0"),
         )
+
+
+def test_order_pricing_requires_a_non_negative_two_decimal_shipping_total() -> None:
+    assert OrderRequestPricingUpdate(
+        shipping_price=Decimal("5.00")
+    ).shipping_price == Decimal("5.00")
+    assert OrderRequestPricingUpdate(
+        shipping_price=Decimal("0.00")
+    ).shipping_price == Decimal("0.00")
+
+    invalid_payloads = (
+        {},
+        {"shippingPrice": None},
+        {"shippingPrice": "-0.01"},
+        {"shippingPrice": "5.001"},
+    )
+    for payload in invalid_payloads:
+        with pytest.raises(ValidationError):
+            OrderRequestPricingUpdate.model_validate(payload)
 
 
 def test_quantity_and_pricing_contracts_reject_fields_owned_by_the_other() -> None:

@@ -26,6 +26,7 @@ from src.api.order_requests.domain import (
     OrderRequestInvalidTransition,
     OrderRequestNotFound,
     OrderRequestPeriodNotOpen,
+    OrderRequestPricingUpdate,
     OrderRequestStatus,
     OrderRequestUpdate,
 )
@@ -83,6 +84,7 @@ class FakeRequest:
     status: str = "submitted"
     note: str | None = None
     currency: str = "USD"
+    shipping_price: Decimal | None = None
     cancelled_at: datetime | None = None
     cancelled_by_user_id: int | None = None
     items: list[object] = field(default_factory=list)
@@ -110,7 +112,6 @@ def fake_item(
         requested_quantity=2,
         agreed_quantity=2,
         card_unit_price=price,
-        shipping_unit_price=price,
         tax_unit_price=price,
         removed_at=removed_at,
         removed_by_user_id=USER.user_id if removed_at else None,
@@ -190,7 +191,6 @@ class ItemDAO:
             requested_quantity=quantity,
             agreed_quantity=quantity,
             card_unit_price=None,
-            shipping_unit_price=None,
             tax_unit_price=None,
             removed_at=None,
             removed_by_user_id=None,
@@ -711,9 +711,11 @@ async def test_admin_can_start_review_and_status_change_is_audited(
     assert isinstance(result, Ok)
     assert request_dao.locked == [17]
     assert request.status is OrderRequestStatus.IN_REVIEW
+    assert request.shipping_price == Decimal("5.00")
     assert history_dao.created[-1]["event"] is OrderRequestEventType.STATUS_CHANGED
     assert history_dao.created[-1]["changes"] == [
-        {"field": "status", "oldValue": "submitted", "newValue": "in_review"}
+        {"field": "status", "oldValue": "submitted", "newValue": "in_review"},
+        {"field": "shippingPrice", "oldValue": None, "newValue": "5.00"},
     ]
     assert db.commits == 1
 
@@ -783,9 +785,12 @@ async def test_accept_succeeds_with_zero_price_components(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     item = fake_item(priced=True)
-    item.shipping_unit_price = Decimal("0.00")
     item.tax_unit_price = Decimal("0.00")
-    request = FakeRequest(status=OrderRequestStatus.IN_REVIEW, items=[item])
+    request = FakeRequest(
+        status=OrderRequestStatus.IN_REVIEW,
+        shipping_price=Decimal("0.00"),
+        items=[item],
+    )
     install_daos(monkeypatch, request=request)
 
     result = await order_request_cases.accept(FakeDB(), ADMIN, 17)
@@ -793,6 +798,22 @@ async def test_accept_succeeds_with_zero_price_components(
     assert isinstance(result, Ok)
     assert result.value.status is OrderRequestStatus.ACCEPTED
     assert result.value.agreed_total == Decimal("2.00")
+
+
+@pytest.mark.anyio
+async def test_accept_requires_order_shipping_price(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = FakeRequest(
+        status=OrderRequestStatus.IN_REVIEW,
+        shipping_price=None,
+        items=[fake_item(priced=True)],
+    )
+    install_daos(monkeypatch, request=request)
+
+    result = await order_request_cases.accept(FakeDB(), ADMIN, 17)
+
+    assert result == Err(OrderRequestCannotAccept("missing_shipping_price"))
 
 
 @pytest.mark.anyio
@@ -834,6 +855,7 @@ async def test_reject_and_reopen_follow_explicit_sources(
     assert cancelled_request.cancelled_by_user_id is None
     assert {change["field"] for change in history_dao.created[-1]["changes"]} == {
         "status",
+        "shippingPrice",
         "cancelledAt",
         "cancelledByUserId",
     }
@@ -886,6 +908,7 @@ async def test_pricing_updates_active_accepted_order_without_changing_status(
 ) -> None:
     request = FakeRequest(
         status=OrderRequestStatus.ACCEPTED,
+        shipping_price=Decimal("5.00"),
         items=[fake_item(priced=True)],
     )
     _, _, _, _, history_dao = install_daos(monkeypatch, request=request)
@@ -897,7 +920,6 @@ async def test_pricing_updates_active_accepted_order_without_changing_status(
         1,
         OrderRequestItemPricingUpdate(
             card_unit_price=Decimal("2.005"),
-            shipping_unit_price=Decimal("0"),
             tax_unit_price=Decimal("0.10"),
         ),
     )
@@ -905,7 +927,7 @@ async def test_pricing_updates_active_accepted_order_without_changing_status(
     assert isinstance(result, Ok)
     assert request.status is OrderRequestStatus.ACCEPTED
     assert request.items[0].card_unit_price == Decimal("2.01")
-    assert result.value.agreed_total == Decimal("4.22")
+    assert result.value.agreed_total == Decimal("9.22")
     assert history_dao.created[-1]["event"] is OrderRequestEventType.ITEM_UPDATED
 
 
@@ -918,7 +940,6 @@ async def test_pricing_noop_has_no_history_and_failure_rolls_back(
     _, _, _, _, history_dao = install_daos(monkeypatch, request=request)
     same = OrderRequestItemPricingUpdate(
         card_unit_price=Decimal("1"),
-        shipping_unit_price=Decimal("1"),
         tax_unit_price=Decimal("1"),
     )
     db = FakeDB()
@@ -933,9 +954,44 @@ async def test_pricing_noop_has_no_history_and_failure_rolls_back(
     monkeypatch.setattr(history_dao, "create", fail_history)
     changed = OrderRequestItemPricingUpdate(
         card_unit_price=Decimal("2"),
-        shipping_unit_price=Decimal("1"),
         tax_unit_price=Decimal("1"),
     )
     with pytest.raises(DAOError):
         await order_request_cases.update_pricing(db, ADMIN, 17, 1, changed)
     assert db.rollbacks == 1
+
+
+@pytest.mark.anyio
+async def test_order_shipping_price_updates_once_only_during_review(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = FakeRequest(
+        status=OrderRequestStatus.IN_REVIEW,
+        shipping_price=Decimal("5.00"),
+        items=[fake_item(priced=True)],
+    )
+    _, _, _, _, history_dao = install_daos(monkeypatch, request=request)
+
+    result = await order_request_cases.update_order_pricing(
+        FakeDB(),
+        ADMIN,
+        17,
+        OrderRequestPricingUpdate(shipping_price=Decimal("0.00")),
+    )
+
+    assert isinstance(result, Ok)
+    assert result.value.shipping_price == Decimal("0.00")
+    assert result.value.agreed_total == Decimal("4.00")
+    assert history_dao.created[-1]["event"] is OrderRequestEventType.UPDATED
+    assert history_dao.created[-1]["changes"] == [
+        {"field": "shippingPrice", "oldValue": "5.00", "newValue": "0.00"}
+    ]
+
+    request.status = OrderRequestStatus.ACCEPTED
+    rejected = await order_request_cases.update_order_pricing(
+        FakeDB(),
+        ADMIN,
+        17,
+        OrderRequestPricingUpdate(shipping_price=Decimal("5.00")),
+    )
+    assert rejected == Err(OrderRequestNotEditable(OrderRequestStatus.ACCEPTED))

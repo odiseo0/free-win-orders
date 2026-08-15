@@ -383,6 +383,10 @@ async def test_start_review_requires_admin_permission_and_returns_transition(
             OrderRequestCannotAccept("incomplete_pricing"),
             "Todos los ítems activos deben tener precios completos",
         ),
+        (
+            OrderRequestCannotAccept("missing_shipping_price"),
+            "Debe establecerse el costo de envío de la Orden",
+        ),
     ],
 )
 async def test_accept_documents_and_translates_precondition_conflicts(
@@ -442,9 +446,8 @@ async def test_pricing_uses_camel_case_and_computes_values_server_side(
     pricing = captured["pricing"]
     assert response.status_code == 200
     assert pricing.card_unit_price == Decimal("10.00")
-    assert pricing.shipping_unit_price == Decimal("5.00")
     assert pricing.tax_unit_price == Decimal("1.60")
-    assert pricing.final_unit_price == Decimal("16.60")
+    assert pricing.final_unit_price == Decimal("11.60")
 
 
 @pytest.mark.anyio
@@ -453,22 +456,72 @@ async def test_pricing_rejects_null_negative_and_missing_card_price(
 ) -> None:
     authenticate(ADMIN)
     for payload in (
+        {"cardUnitPrice": None, "taxUnitPrice": "0"},
+        {"cardUnitPrice": "-0.01", "taxUnitPrice": "0"},
+        {"taxUnitPrice": "0"},
         {
-            "cardUnitPrice": None,
-            "shippingUnitPrice": "0",
+            "cardUnitPrice": "1.00",
             "taxUnitPrice": "0",
+            "shippingUnitPrice": "5.00",
         },
-        {
-            "cardUnitPrice": "-0.01",
-            "shippingUnitPrice": "0",
-            "taxUnitPrice": "0",
-        },
-        {"shippingUnitPrice": "0", "taxUnitPrice": "0"},
     ):
         response = await client.patch(
             "/order-requests/17/items/1/pricing",
             json=payload,
         )
+        assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_order_pricing_updates_fixed_shipping_and_requires_review_permission(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    authenticate(ADMIN)
+    captured: dict[str, object] = {}
+
+    async def update_order_pricing(*args: object) -> object:
+        captured["pricing"] = args[-1]
+        response = request_response()
+        response.status = OrderRequestStatus.IN_REVIEW
+        response.shipping_price = args[-1].shipping_price
+        return Ok(response)
+
+    monkeypatch.setattr(
+        order_requests_api.order_request_cases,
+        "update_order_pricing",
+        update_order_pricing,
+    )
+    response = await client.patch(
+        "/order-requests/17/pricing",
+        json={"shippingPrice": "5.00"},
+    )
+
+    assert response.status_code == 200
+    assert captured["pricing"].shipping_price == Decimal("5.00")
+    assert response.json()["shippingPrice"] == "5.00"
+
+    authenticate(USER)
+    forbidden = await client.patch(
+        "/order-requests/17/pricing",
+        json={"shippingPrice": "5.00"},
+    )
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_order_pricing_rejects_invalid_shipping_amounts(
+    client: AsyncClient,
+) -> None:
+    authenticate(ADMIN)
+
+    invalid_payloads = (
+        {},
+        {"shippingPrice": None},
+        {"shippingPrice": "-0.01"},
+        {"shippingPrice": "5.001"},
+    )
+    for payload in invalid_payloads:
+        response = await client.patch("/order-requests/17/pricing", json=payload)
         assert response.status_code == 422
 
 
@@ -524,6 +577,9 @@ def test_openapi_documents_every_declared_http_response() -> None:
             "200", "401", "403", "404", "409", "422"
         },
         ("/order-requests/{order_request_id}/items/{item_id}/pricing", "patch"): {
+            "200", "401", "403", "404", "409", "422"
+        },
+        ("/order-requests/{order_request_id}/pricing", "patch"): {
             "200", "401", "403", "404", "409", "422"
         },
     }

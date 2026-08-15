@@ -32,6 +32,7 @@ def test_order_request_has_safe_defaults() -> None:
 
     assert request.status == "submitted"
     assert request.currency == "USD"
+    assert request.shipping_price is None
     assert request.note is None
     assert request.cancelled_at is None
     assert request.cancelled_by_user_id is None
@@ -55,7 +56,6 @@ def test_order_request_item_keeps_listing_snapshot_and_nullable_pricing() -> Non
     )
 
     assert item.card_unit_price is None
-    assert item.shipping_unit_price is None
     assert item.tax_unit_price is None
     assert item.removed_at is None
     assert item.removed_by_user_id is None
@@ -66,7 +66,6 @@ def test_money_columns_use_numeric_12_2() -> None:
     money_columns = (
         "estimated_unit_price",
         "card_unit_price",
-        "shipping_unit_price",
         "tax_unit_price",
     )
 
@@ -76,11 +75,17 @@ def test_money_columns_use_numeric_12_2() -> None:
         assert column_type.precision == 12
         assert column_type.scale == 2
 
+    shipping_type = OrderRequest.__table__.c.shipping_price.type
+    assert isinstance(shipping_type, Numeric)
+    assert shipping_type.precision == 12
+    assert shipping_type.scale == 2
+
 
 def test_models_define_database_invariants() -> None:
     assert _check_names(OrderRequest) == {
         "ck_order_requests_valid_status",
         "ck_order_requests_valid_currency",
+        "ck_order_requests_non_negative_shipping_price",
         "ck_order_requests_consistent_cancelled_status",
         "ck_order_requests_consistent_cancellation_audit",
     }

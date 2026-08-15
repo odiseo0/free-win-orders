@@ -11,7 +11,7 @@ from src.core.schema import BaseModel, PaginatedResponse
 
 MONEY_QUANTUM = Decimal("0.01")
 DEFAULT_TAX_RATE = Decimal("0.16")
-DEFAULT_SHIPPING_UNIT_PRICE = Decimal("5.00")
+DEFAULT_SHIPPING_PRICE = Decimal("5.00")
 
 
 def quantize_usd(value: Decimal) -> Decimal:
@@ -134,15 +134,6 @@ class OrderRequestItemPricingUpdate(BaseModel):
         description="Precio definitivo de una copia de la carta, en USD.",
         examples=["3.50"],
     )
-    shipping_unit_price: Decimal = Field(
-        default=DEFAULT_SHIPPING_UNIT_PRICE,
-        ge=0,
-        description=(
-            "Parte del envío asignada a una copia, en USD. Si se omite, usa "
-            "USD 5,00."
-        ),
-        examples=["5.00"],
-    )
     tax_unit_price: Decimal = Field(
         default_factory=Decimal,
         ge=0,
@@ -155,7 +146,6 @@ class OrderRequestItemPricingUpdate(BaseModel):
 
     @field_validator(
         "card_unit_price",
-        "shipping_unit_price",
         "tax_unit_price",
         mode="after",
     )
@@ -173,15 +163,32 @@ class OrderRequestItemPricingUpdate(BaseModel):
         return self
 
     @computed_field(
-        description=(
-            "Suma calculada en servidor de carta, envío e impuesto por cada copia."
-        )
+        description="Suma calculada en servidor de carta e impuesto por cada copia."
     )
     @property
     def final_unit_price(self) -> Decimal:
-        return quantize_usd(
-            self.card_unit_price + self.shipping_unit_price + self.tax_unit_price
-        )
+        return quantize_usd(self.card_unit_price + self.tax_unit_price)
+
+
+class OrderRequestPricingUpdate(BaseModel):
+    model_config: ClassVar = {"extra": "forbid"}
+
+    shipping_price: Decimal = Field(
+        ge=0,
+        multiple_of=MONEY_QUANTUM,
+        max_digits=12,
+        decimal_places=2,
+        description=(
+            "Costo total de envío de la Orden. Se aplica una sola vez, "
+            "independientemente del número de ítems o copias."
+        ),
+        examples=["5.00"],
+    )
+
+    @field_validator("shipping_price", mode="after")
+    @classmethod
+    def normalize_money(cls, value: Decimal) -> Decimal:
+        return quantize_usd(value)
 
 
 class OrderRequestItemResponse(BaseModel):
@@ -200,13 +207,6 @@ class OrderRequestItemResponse(BaseModel):
     card_unit_price: Decimal | None = Field(
         default=None,
         description="Precio definitivo de la carta en USD; nulo hasta su revisión.",
-    )
-    shipping_unit_price: Decimal | None = Field(
-        default=None,
-        description=(
-            "Envío unitario en USD; comienza en USD 5,00 y puede ajustarse "
-            "durante la revisión."
-        ),
     )
     tax_unit_price: Decimal | None = Field(
         default=None,
@@ -236,11 +236,7 @@ class OrderRequestItemResponse(BaseModel):
     )
     @property
     def final_unit_price(self) -> Decimal | None:
-        prices = (
-            self.card_unit_price,
-            self.shipping_unit_price,
-            self.tax_unit_price,
-        )
+        prices = (self.card_unit_price, self.tax_unit_price)
 
         if any(price is None for price in prices):
             return None
@@ -273,6 +269,7 @@ class OrderRequestResponse(BaseModel):
                     "status": "submitted",
                     "note": "Priorizar cartas en condición Near Mint.",
                     "currency": "USD",
+                    "shippingPrice": None,
                     "cancelledAt": None,
                     "cancelledByUserId": None,
                     "items": [
@@ -288,7 +285,6 @@ class OrderRequestResponse(BaseModel):
                             "requestedQuantity": 2,
                             "agreedQuantity": 0,
                             "cardUnitPrice": None,
-                            "shippingUnitPrice": None,
                             "taxUnitPrice": None,
                             "removedAt": None,
                             "removedByUserId": None,
@@ -321,6 +317,13 @@ class OrderRequestResponse(BaseModel):
         description="Moneda ISO 4217 usada por todos los importes de la Orden.",
         examples=["USD"],
     )
+    shipping_price: Decimal | None = Field(
+        default=None,
+        description=(
+            "Costo total de envío de la Orden. Es nulo hasta iniciar la revisión "
+            "y se suma una sola vez al total acordado."
+        ),
+    )
     cancelled_at: datetime | None = Field(
         default=None,
         description="Fecha con zona horaria de cancelación; nula si no está cancelada.",
@@ -349,12 +352,16 @@ class OrderRequestResponse(BaseModel):
         active_items = [item for item in self.items if item.removed_at is None]
         totals = [item.agreed_total for item in active_items]
 
-        if not active_items or any(total is None for total in totals):
+        if (
+            not active_items
+            or self.shipping_price is None
+            or any(total is None for total in totals)
+        ):
             return None
 
-        order_total = sum((total for total in totals if total is not None), Decimal())
+        items_total = sum((total for total in totals if total is not None), Decimal())
 
-        return quantize_usd(order_total)
+        return quantize_usd(items_total + self.shipping_price)
 
 
 class OrderRequestListResponse(PaginatedResponse[OrderRequestResponse]):

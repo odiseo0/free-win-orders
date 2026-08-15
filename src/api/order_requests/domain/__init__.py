@@ -1,5 +1,5 @@
 from .entities import (
-    DEFAULT_SHIPPING_UNIT_PRICE,
+    DEFAULT_SHIPPING_PRICE,
     DEFAULT_TAX_RATE,
     MONEY_QUANTUM,
     OrderRequestCreate,
@@ -11,6 +11,7 @@ from .entities import (
     OrderRequestItemResponse,
     OrderRequestItemUpdate,
     OrderRequestListResponse,
+    OrderRequestPricingUpdate,
     OrderRequestResponse,
     OrderRequestStatus,
     OrderRequestUpdate,
@@ -42,7 +43,7 @@ from .rules import (
 )
 
 __all__ = [
-    "DEFAULT_SHIPPING_UNIT_PRICE",
+    "DEFAULT_SHIPPING_PRICE",
     "DEFAULT_TAX_RATE",
     "MONEY_QUANTUM",
     "OrderRequestAccessDenied",
@@ -66,6 +67,7 @@ __all__ = [
     "OrderRequestNotEditable",
     "OrderRequestNotFound",
     "OrderRequestPeriodNotOpen",
+    "OrderRequestPricingUpdate",
     "OrderRequestResponse",
     "OrderRequestStatus",
     "OrderRequestUpdate",

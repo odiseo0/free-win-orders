@@ -43,6 +43,7 @@ def test_order_components_expose_stable_unique_operation_ids() -> None:
         "rejectOrderRequest",
         "cancelOrderRequest",
         "reopenOrderRequestForReview",
+        "updateOrderRequestPricing",
         "updateOrderRequestItemPricing",
     }
     assert order_period_ids.isdisjoint(order_request_ids)
@@ -66,7 +67,9 @@ def test_order_request_schema_documents_money_snapshots_and_nullability() -> Non
     assert "snapshot" in item["cardName"]["description"]
     assert "USD" in item["estimatedUnitPrice"]["description"]
     assert "nulo" in item["finalUnitPrice"]["description"]
+    assert "shippingUnitPrice" not in item
     assert "ISO 4217" in order["properties"]["currency"]["description"]
+    assert "una sola vez" in order["properties"]["shippingPrice"]["description"]
     assert order["examples"][0]["status"] == "submitted"
     assert {"type": "null"} in order["properties"]["agreedTotal"]["anyOf"]
 
@@ -124,4 +127,8 @@ def test_order_request_conflicts_include_representative_examples() -> None:
         "detail": "El Pedido no está abierto para recibir Órdenes"
     }
     examples = accept_responses["409"]["content"]["application/json"]["examples"]
-    assert {"invalidTransition", "incompletePrices"} <= examples.keys()
+    assert {
+        "invalidTransition",
+        "incompletePrices",
+        "missingShippingPrice",
+    } <= examples.keys()

@@ -28,6 +28,10 @@ class OrderRequest(Date, Base, kw_only=True):
         ),
         CheckConstraint("currency = 'USD'", name="valid_currency"),
         CheckConstraint(
+            "shipping_price IS NULL OR shipping_price >= 0",
+            name="non_negative_shipping_price",
+        ),
+        CheckConstraint(
             "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
             name="consistent_cancelled_status",
         ),
@@ -58,6 +62,9 @@ class OrderRequest(Date, Base, kw_only=True):
     note: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
     currency: Mapped[str] = mapped_column(
         String(3), default="USD", server_default="USD"
+    )
+    shipping_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), default=None, nullable=True
     )
     cancelled_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
     cancelled_by_user_id: Mapped[int | None] = mapped_column(
@@ -104,7 +111,6 @@ class OrderRequestItem(Date, Base, kw_only=True):
         ),
         CheckConstraint(
             "(card_unit_price IS NULL OR card_unit_price >= 0) AND "
-            "(shipping_unit_price IS NULL OR shipping_unit_price >= 0) AND "
             "(tax_unit_price IS NULL OR tax_unit_price >= 0)",
             name="non_negative_final_prices",
         ),
@@ -141,9 +147,6 @@ class OrderRequestItem(Date, Base, kw_only=True):
     requested_quantity: Mapped[int] = mapped_column(Integer)
     agreed_quantity: Mapped[int] = mapped_column(Integer)
     card_unit_price: Mapped[Decimal | None] = mapped_column(
-        Numeric(12, 2), default=None, nullable=True
-    )
-    shipping_unit_price: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), default=None, nullable=True
     )
     tax_unit_price: Mapped[Decimal | None] = mapped_column(

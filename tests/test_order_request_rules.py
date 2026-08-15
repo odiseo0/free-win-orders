@@ -75,8 +75,8 @@ def test_accepted_request_rejects_new_items() -> None:
 
 
 def test_accepted_request_restores_only_fully_priced_items() -> None:
-    complete = (Decimal("1.00"), Decimal("0.00"), Decimal("0.20"))
-    incomplete = (Decimal("1.00"), None, Decimal("0.20"))
+    complete = (Decimal("1.00"), Decimal("0.20"))
+    incomplete = (Decimal("1.00"), None)
 
     assert can_restore_order_request_item(OrderRequestStatus.ACCEPTED, complete)
     assert not can_restore_order_request_item(OrderRequestStatus.ACCEPTED, incomplete)
@@ -84,7 +84,7 @@ def test_accepted_request_restores_only_fully_priced_items() -> None:
 
 def test_acceptance_requires_active_fully_priced_items() -> None:
     assert can_accept_order_request(
-        [(Decimal("1.00"), Decimal("0.00"), Decimal("0.20"))]
+        [(Decimal("1.00"), Decimal("0.20"))]
     )
     assert not can_accept_order_request([])
-    assert not can_accept_order_request([(Decimal("1.00"), None, Decimal("0.20"))])
+    assert not can_accept_order_request([(Decimal("1.00"), None)])

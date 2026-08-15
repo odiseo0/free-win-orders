@@ -8,7 +8,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from src.api.order_requests.domain import (
-    DEFAULT_SHIPPING_UNIT_PRICE,
     OrderRequestEventType,
     OrderRequestStatus,
     calculate_default_tax_unit_price,
@@ -141,7 +140,6 @@ class OrderRequestItemDAO(DAO[OrderRequestItem, BaseModel, BaseModel]):
             estimated_unit_price=estimated_unit_price,
             requested_quantity=requested_quantity,
             agreed_quantity=requested_quantity,
-            shipping_unit_price=DEFAULT_SHIPPING_UNIT_PRICE,
             tax_unit_price=calculate_default_tax_unit_price(estimated_unit_price),
         )
 

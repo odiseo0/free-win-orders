@@ -4,7 +4,7 @@ from src.api.roles.domain import Actor, AuthorizationDecision, PermissionCode
 
 from .entities import OrderRequestStatus
 
-type PriceComponents = tuple[Decimal | None, Decimal | None, Decimal | None]
+type PriceComponents = tuple[Decimal | None, Decimal | None]
 
 
 _ALLOWED_TRANSITIONS = frozenset(

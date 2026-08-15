@@ -71,6 +71,7 @@ class RequestDAO:
             id=17,
             status=OrderRequestStatus.SUBMITTED,
             currency="USD",
+            shipping_price=None,
             cancelled_at=None,
             cancelled_by_user_id=None,
             items=[],
@@ -132,7 +133,6 @@ class ItemDAO:
             requested_quantity=requested_quantity,
             agreed_quantity=requested_quantity,
             card_unit_price=None,
-            shipping_unit_price=None,
             tax_unit_price=None,
             removed_at=None,
             removed_by_user_id=None,
@@ -231,18 +231,23 @@ async def test_complete_v1_http_flow_and_owner_isolation(
             current_actor["value"] = ADMIN
             reviewed = await client.post("/order-requests/17/start-review")
             assert reviewed.json()["status"] == "in_review"
+            assert reviewed.json()["shippingPrice"] == "5.00"
+            shipping = await client.patch(
+                "/order-requests/17/pricing",
+                json={"shippingPrice": "4.25"},
+            )
+            assert shipping.json()["shippingPrice"] == "4.25"
             priced = await client.patch(
                 "/order-requests/17/items/1/pricing",
                 json={
                     "cardUnitPrice": "2.00",
-                    "shippingUnitPrice": "0.50",
                     "taxUnitPrice": "0.10",
                 },
             )
-            assert priced.json()["items"][0]["finalUnitPrice"] == "2.60"
+            assert priced.json()["items"][0]["finalUnitPrice"] == "2.10"
             accepted = await client.post("/order-requests/17/accept")
             assert accepted.json()["status"] == "accepted"
-            assert accepted.json()["agreedTotal"] == "5.20"
+            assert accepted.json()["agreedTotal"] == "8.45"
 
             current_actor["value"] = OWNER
             adjusted = await client.patch(
@@ -250,7 +255,7 @@ async def test_complete_v1_http_flow_and_owner_isolation(
                 json={"agreedQuantity": 1},
             )
             assert adjusted.json()["status"] == "accepted"
-            assert adjusted.json()["agreedTotal"] == "2.60"
+            assert adjusted.json()["agreedTotal"] == "6.35"
             history = await client.get("/order-requests/17/history")
             assert history.status_code == 200
             assert {entry["event"] for entry in history.json()} >= {
