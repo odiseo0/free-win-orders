@@ -23,6 +23,10 @@ Este mecanismo es temporal y por ello OpenAPI no declara un esquema de seguridad
 
 OPENAPI_TAGS = [
     {
+        "name": "health",
+        "description": "Estado del proceso HTTP y de sus dependencias externas.",
+    },
+    {
         "name": "order-periods",
         "description": "Apertura, consulta y administración de Pedidos.",
     },

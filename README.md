@@ -41,6 +41,43 @@ Los componentes de `src/api/` siguen una arquitectura hexagonal pragmática:
 
 El caché vive en `src/core/services/cache/` y permite alternar entre memoria y Valkey mediante `CACHE_BACKEND`. La proyección de solo lectura usada para validar publicaciones externas está en `src/api/order_requests/repository/card_listings.py`.
 
+## Imagen Docker
+
+La imagen contiene solo la API. PostgreSQL, Valkey, Meilisearch y
+`free-win-search` se ejecutan y administran fuera de este repositorio.
+
+Construye e inicia la API con:
+
+```bash
+docker build -t free-win:local .
+docker run --rm --name free-win-api -p 8000:8000 --env-file .env free-win:local
+```
+
+La configuración entra mediante variables de entorno. La imagen no contiene el
+archivo `.env` ni secretos. Dentro del contenedor, `localhost` identifica al
+propio contenedor. Por ello `DB_HOST` y `CACHE_URL` deben apuntar al nombre DNS o
+la dirección del servicio externo. Usa `CACHE_BACKEND=memory` cuando no necesites
+Valkey.
+
+Las migraciones y el catálogo inicial son pasos explícitos y separados del
+arranque HTTP:
+
+```bash
+docker run --rm --env-file .env free-win:local alembic upgrade head
+docker run --rm --env-file .env free-win:local python -m src.api.roles.bootstrap
+```
+
+Antes de migrar una base compartida, sigue el orden definido en
+[`docs/tech_context.md`](docs/tech_context.md#152-orden-de-migración-de-la-base-compartida).
+
+La API expone dos comprobaciones:
+
+- `GET /health/live`: confirma que el proceso HTTP responde;
+- `GET /health/ready`: comprueba PostgreSQL y el caché configurado.
+
+Docker usa la primera como `HEALTHCHECK`. Una plataforma puede usar la segunda
+para dejar de enviar tráfico cuando una dependencia no esté disponible.
+
 ## Documentación
 
 La carpeta `docs/` contiene documentos que servirán como base de formato y organización. Parte de su contenido todavía proviene de otro contexto y debe adaptarse completamente a Free Win antes de considerarse documentación vigente del proyecto.

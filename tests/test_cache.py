@@ -20,3 +20,10 @@ async def test_in_memory_cache_deletes_only_matching_prefix() -> None:
     assert await cache.get("orders:item:1") is None
     assert await cache.get("orders:list:1:100") is None
     assert await cache.get("order-periods:item:1") == "period"
+
+
+@pytest.mark.anyio
+async def test_in_memory_cache_health_check_succeeds() -> None:
+    cache = InMemoryCache()
+
+    await cache.check_health()

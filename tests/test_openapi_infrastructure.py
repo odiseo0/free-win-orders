@@ -81,6 +81,7 @@ def test_openapi_exposes_project_metadata_and_ordered_tags() -> None:
     assert schema["info"]["license"] == {"name": "MIT"}
     assert "Autenticación temporal" in schema["info"]["description"]
     assert [tag["name"] for tag in schema["tags"]] == [
+        "health",
         "order-periods",
         "order-requests",
         "users",

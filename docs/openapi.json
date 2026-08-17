@@ -9,6 +9,60 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Comprobar que el proceso HTTP responde",
+        "description": "No consulta PostgreSQL ni el caché configurado.",
+        "operationId": "getHealthLiveness",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Comprobar las dependencias necesarias para atender solicitudes",
+        "description": "Comprueba PostgreSQL y el caché sin exponer datos de conexión.",
+        "operationId": "getHealthReadiness",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PostgreSQL o el caché configurado no están disponibles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/": {
       "get": {
         "tags": [
@@ -3697,6 +3751,24 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "ready",
+              "unavailable"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse"
+      },
       "OrderPeriodCreate": {
         "properties": {
           "name": {
@@ -5720,6 +5792,10 @@
     }
   },
   "tags": [
+    {
+      "name": "health",
+      "description": "Estado del proceso HTTP y de sus dependencias externas."
+    },
     {
       "name": "order-periods",
       "description": "Apertura, consulta y administración de Pedidos."

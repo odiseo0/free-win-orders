@@ -39,7 +39,7 @@ Este documento no cubre:
 | Gestor del proyecto | PDM |
 | Migraciones | Alembic con historial local y propiedad de tablas separada por servicio |
 | Frontend | Fuera del alcance de este repositorio |
-| Despliegue | Sin Dockerfile ni configuración de plataforma documentada |
+| Despliegue | Imagen Docker de la API; sin Compose ni configuración de plataforma |
 | Observabilidad | Sin stack estructurado de logs, métricas o tracing definido |
 
 ## 4) Runtime y dependencias
@@ -56,22 +56,20 @@ Este documento no cubre:
 
 | Dependencia | Propósito principal | Uso representativo |
 | --- | --- | --- |
-| `fastapi[standard]` | API ASGI, routing, dependencias y servidor de desarrollo | `src/application.py`, `src/api/` |
+| `fastapi` | API ASGI, routing y dependencias | `src/application.py`, `src/api/` |
+| `uvicorn[standard]` | Servidor ASGI y sus optimizaciones de ejecución | `Dockerfile`, desarrollo local |
 | `SQLAlchemy` | ORM, consultas y persistencia async | `src/core/db/`, repositories |
 | `asyncpg` | Driver PostgreSQL asíncrono | `src/core/db/session.py` |
-| `httptools` | Parser HTTP de alto rendimiento para el servidor ASGI | runtime de FastAPI/Uvicorn |
+| `pydantic-settings` | Configuración tipada mediante variables de entorno | `src/settings/` |
 | `valkey` | Cliente oficial asíncrono para el caché distribuido | `src/core/services/cache/valkey.py` |
 
 `src/core/result.py` implementa `Result[T, E]`, `Ok[T]` y `Err[E]` con dataclasses y un type alias de Python 3.13. No requiere una dependencia externa.
 
-### 4.3 Dependencias usadas de forma indirecta o no declarada
+### 4.3 Dependencias de desarrollo
 
-El código importa actualmente `httpx` para pruebas ASGI, `pydantic-settings` para
-configuración y pytest para la suite existente.
-
-Estas dependencias no aparecen como entradas directas en `pyproject.toml`. Algunas pueden estar disponibles transitivamente o en el entorno local, pero el proyecto no debe depender de esa casualidad.
-
-**Restricción actual**: antes de considerar reproducible la instalación, las dependencias runtime y de desarrollo usadas directamente deben declararse en sus grupos correspondientes y reflejarse en `pdm.lock`.
+`pytest` y `httpx` pertenecen al grupo `dev`. No se instalan en la etapa final de
+la imagen. Las dependencias importadas por la aplicación están declaradas de
+forma directa y `pdm.lock` fija el conjunto resuelto.
 
 ### 4.4 Librería estándar relevante
 
@@ -135,6 +133,17 @@ descripción explica la identidad local temporal sin declarar un `securityScheme
 que el backend todavía no consume.
 
 Todavía no existe una política por entorno para habilitar u ocultar OpenAPI.
+
+### 5.5 Salud del proceso y sus dependencias
+
+`GET /health/live` comprueba solo que el proceso HTTP responda. No abre una
+conexión a PostgreSQL ni consulta el caché. La imagen usa este endpoint como
+`HEALTHCHECK` para que una caída externa no cause reinicios del proceso.
+
+`GET /health/ready` ejecuta una consulta mínima contra PostgreSQL y comprueba el
+caché configurado. Con memoria, la comprobación del caché siempre termina bien;
+con Valkey, ejecuta `PING`. Si alguna dependencia falla, el endpoint devuelve
+`503` y un estado genérico sin datos de conexión ni texto de la excepción.
 
 ## 6) Organización del código
 
@@ -435,17 +444,41 @@ tablas de Search mientras existan Órdenes que conserven la FK.
 
 ### 15.3 Artefactos de despliegue
 
-El repositorio no contiene actualmente:
+El repositorio contiene:
 
-- Dockerfile;
-- compose file;
-- manifiestos de plataforma;
-- configuración de CI;
-- definición de health check dedicada.
+- un `Dockerfile` por etapas basado en Python 3.13 slim;
+- instalación bloqueada con PDM 2.28.0 en la etapa de build;
+- una etapa final sin PDM ni dependencias de prueba;
+- ejecución con el usuario fijo `10001:10001`;
+- Uvicorn con un proceso sobre el puerto `8000`;
+- un `HEALTHCHECK` contra `GET /health/live`;
+- `.dockerignore`, que excluye `.env`, Git, entornos locales, pruebas y
+  documentación del contexto enviado al build.
 
-`GET /` es un endpoint de bienvenida, no un contrato de health check.
+El comando predeterminado inicia Uvicorn y puede reemplazarse para ejecutar
+Alembic o el bootstrap desde la misma imagen. El arranque HTTP no aplica
+migraciones ni modifica el catálogo.
 
-La estrategia de despliegue debe documentarse cuando exista un entorno objetivo real.
+El repositorio no contiene Compose, manifiestos de plataforma, publicación a un
+registro ni configuración de CI. Tampoco crea o administra PostgreSQL, Valkey,
+Meilisearch o `free-win-search`.
+
+### 15.4 Uso de la imagen
+
+```bash
+docker build -t free-win:local .
+docker run --rm --name free-win-api -p 8000:8000 --env-file .env free-win:local
+docker run --rm --env-file .env free-win:local alembic upgrade head
+docker run --rm --env-file .env free-win:local python -m src.api.roles.bootstrap
+```
+
+La imagen no copia `.env` ni secretos. La plataforma debe inyectar la
+configuración durante la ejecución. Dentro del contenedor, `localhost` apunta al
+propio contenedor: `DB_HOST` y `CACHE_URL` deben usar el nombre DNS o la dirección
+del servicio externo. Si no hay Valkey, usa `CACHE_BACKEND=memory`.
+
+El orden de migración de la sección anterior sigue siendo obligatorio cuando
+Free Win y Search usan la misma base.
 
 ## 16) Observabilidad y seguridad operativa
 

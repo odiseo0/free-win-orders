@@ -15,6 +15,9 @@ class InMemoryCache:
     async def start(self) -> None:
         pass
 
+    async def check_health(self) -> None:
+        pass
+
     async def get(self, key: str) -> str | None:
         entry = self._entries.get(key)
 

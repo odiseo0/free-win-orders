@@ -112,3 +112,13 @@ async def test_valkey_cache_closes_client_pool() -> None:
     await cache.close()
 
     assert client.closed is True
+
+
+@pytest.mark.anyio
+async def test_valkey_cache_health_check_pings_client() -> None:
+    client = FakeValkeyClient()
+    cache = ValkeyCache(client)
+
+    await cache.check_health()
+
+    assert client.pinged is True

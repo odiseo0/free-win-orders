@@ -71,6 +71,9 @@ class ValkeyCache:
     async def start(self) -> None:
         await self._client.ping()
 
+    async def check_health(self) -> None:
+        await self._client.ping()
+
     async def get(self, key: str) -> str | None:
         value = await self._client.get(self._key(key))
 
