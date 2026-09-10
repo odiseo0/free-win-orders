@@ -38,6 +38,15 @@ class PermissionCode(StrEnum):
     ORDER_REQUESTS_UPDATE_ANY = "order_requests.update.any"
     ORDER_REQUESTS_REVIEW = "order_requests.review"
 
+    DELIVERIES_READ_SELF = "deliveries.read.self"
+    DELIVERIES_READ_ANY = "deliveries.read.any"
+    DELIVERIES_SELECT_SELF = "deliveries.select.self"
+    DELIVERIES_MANAGE_PAYMENTS = "deliveries.manage_payments"
+    DELIVERIES_MANAGE = "deliveries.manage"
+    DELIVERIES_REFRESH_SELF = "deliveries.refresh.self"
+    DELIVERIES_REFRESH_ANY = "deliveries.refresh.any"
+    DELIVERY_STAGES_MANAGE = "delivery_stages.manage"
+
 
 USER_PERMISSIONS = frozenset(
     {
@@ -51,5 +60,8 @@ USER_PERMISSIONS = frozenset(
         PermissionCode.ORDER_REQUESTS_READ_SELF,
         PermissionCode.ORDER_REQUESTS_CREATE_SELF,
         PermissionCode.ORDER_REQUESTS_UPDATE_SELF,
+        PermissionCode.DELIVERIES_READ_SELF,
+        PermissionCode.DELIVERIES_SELECT_SELF,
+        PermissionCode.DELIVERIES_REFRESH_SELF,
     }
 )

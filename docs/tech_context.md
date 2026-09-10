@@ -184,7 +184,8 @@ La configuración usa `BaseSettings` y `SettingsConfigDict` de pydantic-settings
 - `src/settings/api_settings.py` define `APISettings` con prefijo `API_`.
 - `src/settings/cache_settings.py` define `CacheSettings` con prefijo `CACHE_`.
 - `src/settings/db_settings.py` define `DBSettings` para PostgreSQL.
-- `src/settings/__init__.py` exporta los tres grupos de configuración.
+- `src/settings/delivery_settings.py` define los intervalos y límites de seguimiento.
+- `src/settings/__init__.py` exporta los grupos de configuración.
 
 ### 7.2 Variables de base de datos declaradas
 
@@ -224,6 +225,24 @@ Esos atributos no están definidos actualmente en `DBSettings`.
 - `AUTH_LOCAL_USER_ID`, que identifica un usuario persistido cuando el modo es `local`.
 
 Los endpoints protegidos responden `401` si falta cualquiera de ambos valores o el usuario no existe. La identidad local recibe todos los permisos del catálogo para facilitar pruebas manuales, sin modificar el rol persistido del usuario. Esta configuración no sustituye autenticación, hashing, sesiones ni tokens.
+
+### 7.6 Proceso de seguimiento nacional
+
+El seguimiento periódico se ejecuta separado de FastAPI:
+
+```text
+python -m src.api.deliveries.worker
+```
+
+El proceso busca guías vencidas o solicitadas, bloquea cada lote y continúa si
+una empresa falla. Las opciones usan el prefijo `DELIVERY_`:
+`POLL_INTERVAL_SECONDS`, `MANUAL_REFRESH_COOLDOWN_SECONDS`,
+`PROVIDER_TIMEOUT_SECONDS`, `MAX_BACKOFF_SECONDS`, `WORKER_IDLE_SECONDS` y
+`BATCH_SIZE`.
+
+La API no acepta URL externas. Cada adaptador fija su destino. Mientras no se
+entreguen las páginas y muestras de Zoom y MRW, los adaptadores por defecto
+responden `provider_not_configured` sin acceder a la red.
 
 ## 8) Persistencia
 

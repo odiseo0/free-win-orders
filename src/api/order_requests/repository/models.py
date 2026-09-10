@@ -23,7 +23,7 @@ from src.core.db import Base, Date
 class OrderRequest(Date, Base, kw_only=True):
     __table_args__ = (
         CheckConstraint(
-            "status IN ('submitted', 'in_review', 'accepted', 'rejected', 'cancelled')",
+            "status IN ('submitted', 'in_review', 'accepted', 'paid', 'rejected', 'cancelled')",
             name="valid_status",
         ),
         CheckConstraint("currency = 'USD'", name="valid_currency"),
@@ -38,6 +38,15 @@ class OrderRequest(Date, Base, kw_only=True):
         CheckConstraint(
             "(cancelled_at IS NULL) = (cancelled_by_user_id IS NULL)",
             name="consistent_cancellation_audit",
+        ),
+        CheckConstraint(
+            "(paid_at IS NULL) = (paid_by_user_id IS NULL)",
+            name="consistent_payment_audit",
+        ),
+        CheckConstraint(
+            "(purchasing_finalized_at IS NULL) = "
+            "(purchasing_finalized_by_user_id IS NULL)",
+            name="consistent_purchasing_audit",
         ),
         Index("ix_order_requests_order_period_id", "order_period_id"),
         Index("ix_order_requests_created_by_user_id", "created_by_user_id"),
@@ -68,6 +77,22 @@ class OrderRequest(Date, Base, kw_only=True):
     )
     cancelled_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
     cancelled_by_user_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id"),
+        default=None,
+        nullable=True,
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
+    paid_by_user_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id"),
+        default=None,
+        nullable=True,
+    )
+    purchasing_finalized_at: Mapped[datetime | None] = mapped_column(
+        default=None, nullable=True
+    )
+    purchasing_finalized_by_user_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("users.id"),
         default=None,

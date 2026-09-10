@@ -3702,6 +3702,816 @@
         }
       }
     },
+    "/order-requests/{order_request_id}/mark-paid": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Confirmar el pago de una Orden",
+        "description": "Marca una Orden aceptada como pagada mediante una acción administrativa.",
+        "operationId": "markOrderRequestPaid",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order-requests/{order_request_id}/revert-payment": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Revertir el pago de una Orden",
+        "description": "Revierte el pago mientras no exista ninguna cantidad comprada.",
+        "operationId": "revertOrderRequestPayment",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order-requests/{order_request_id}/purchasing/finalize": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Cerrar la compra de una Orden",
+        "description": "Indica que no se comprarán más cantidades de la Orden.",
+        "operationId": "finalizeOrderRequestPurchasing",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderTrackingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order-requests/{order_request_id}/purchasing/reopen": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Reabrir la compra de una Orden",
+        "description": "Permite nuevas asignaciones antes de crear la entrega final.",
+        "operationId": "reopenOrderRequestPurchasing",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderTrackingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order-requests/{order_request_id}/delivery-preference": {
+      "put": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Elegir retiro o envío nacional",
+        "description": "Guarda la modalidad final y valida que la dirección pertenezca al usuario.",
+        "operationId": "setOrderRequestDeliveryPreference",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryPreferenceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryPreferenceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order-requests/{order_request_id}/tracking": {
+      "get": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Consultar el seguimiento de una Orden",
+        "description": "Devuelve pago, cantidades, envíos relacionados y entrega final.",
+        "operationId": "getOrderRequestTracking",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderTrackingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/international-shipments": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Crear un envío internacional",
+        "description": "Agrupa cantidades de una o varias Órdenes pagadas del mismo Pedido.",
+        "operationId": "createInternationalShipment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternationalShipmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternationalShipmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Listar envíos internacionales",
+        "description": "Devuelve los envíos administrativos de un Pedido.",
+        "operationId": "listInternationalShipments",
+        "parameters": [
+          {
+            "name": "orderPeriodId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Orderperiodid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InternationalShipmentResponse"
+                  },
+                  "title": "Response Listinternationalshipments"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/international-shipments/{shipment_id}": {
+      "get": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Consultar un envío internacional",
+        "description": "Muestra cantidades y eventos sin exponer otras Órdenes al usuario.",
+        "operationId": "getInternationalShipment",
+        "parameters": [
+          {
+            "name": "shipment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Shipment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternationalShipmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Actualizar un envío internacional",
+        "description": "Cambia el nombre y las referencias administrativas del envío.",
+        "operationId": "updateInternationalShipment",
+        "parameters": [
+          {
+            "name": "shipment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Shipment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternationalShipmentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternationalShipmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/international-shipments/{shipment_id}/events": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Registrar una etapa internacional",
+        "description": "Añade un evento inmutable y permite correcciones con motivo.",
+        "operationId": "addInternationalShipmentEvent",
+        "parameters": [
+          {
+            "name": "shipment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Shipment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternationalShipmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/order-requests/{order_request_id}/fulfillments": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Crear la entrega final de una Orden",
+        "description": "Prepara el retiro o crea un envío nacional con datos copiados.",
+        "operationId": "createOrderRequestFulfillment",
+        "parameters": [
+          {
+            "name": "order_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Order Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FulfillmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FulfillmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/fulfillments/{fulfillment_id}/events": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Registrar una etapa de entrega final",
+        "description": "Actualiza un retiro o envío nacional sin borrar su historial.",
+        "operationId": "addFulfillmentEvent",
+        "parameters": [
+          {
+            "name": "fulfillment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Fulfillment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FulfillmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deliveries/national-shipments/{shipment_id}/refresh": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Solicitar la actualización de una guía",
+        "description": "Marca la guía para que el proceso periódico la consulte pronto.",
+        "operationId": "requestNationalShipmentRefresh",
+        "parameters": [
+          {
+            "name": "shipment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Shipment Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/delivery-stages": {
+      "get": {
+        "tags": [
+          "delivery-stages"
+        ],
+        "summary": "Listar etapas de entrega",
+        "description": "Devuelve el catálogo ordenado y permite filtrar por ámbito.",
+        "operationId": "listDeliveryStages",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeliveryStageScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeliveryStageResponse"
+                  },
+                  "title": "Response Listdeliverystages"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "delivery-stages"
+        ],
+        "summary": "Crear una etapa de entrega",
+        "description": "Añade una clave estable al catálogo logístico.",
+        "operationId": "createDeliveryStage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryStageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryStageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/delivery-stages/{stage_id}": {
+      "patch": {
+        "tags": [
+          "delivery-stages"
+        ],
+        "summary": "Actualizar una etapa de entrega",
+        "description": "Cambia nombre, orden, tipo o disponibilidad sin cambiar su clave.",
+        "operationId": "updateDeliveryStage",
+        "parameters": [
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryStageUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryStageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Welcome",
@@ -3721,6 +4531,443 @@
   },
   "components": {
     "schemas": {
+      "DeliveryEventCreate": {
+        "properties": {
+          "stageKey": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Stagekey"
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurredat"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "correctionOfEventId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionofeventid"
+          },
+          "correctionReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionreason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stageKey"
+        ],
+        "title": "DeliveryEventCreate"
+      },
+      "DeliveryEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "stageId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stageid"
+          },
+          "stageKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stagekey"
+          },
+          "stageName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stagename"
+          },
+          "source": {
+            "$ref": "#/components/schemas/DeliveryEventSource"
+          },
+          "actorUserId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actoruserid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurredat"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recordedat"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "rawStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rawstatus"
+          },
+          "correctionOfEventId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionofeventid"
+          },
+          "correctionReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionreason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "stageId",
+          "stageKey",
+          "stageName",
+          "source",
+          "actorUserId",
+          "occurredAt",
+          "recordedAt",
+          "note",
+          "rawStatus",
+          "correctionOfEventId",
+          "correctionReason"
+        ],
+        "title": "DeliveryEventResponse"
+      },
+      "DeliveryEventSource": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "system",
+          "carrier"
+        ],
+        "title": "DeliveryEventSource"
+      },
+      "DeliveryMethod": {
+        "type": "string",
+        "enum": [
+          "pickup",
+          "national_shipping"
+        ],
+        "title": "DeliveryMethod"
+      },
+      "DeliveryPreferenceResponse": {
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/DeliveryMethod"
+          },
+          "userAddressId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Useraddressid"
+          },
+          "dateUpdated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dateupdated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "userAddressId",
+          "dateUpdated"
+        ],
+        "title": "DeliveryPreferenceResponse"
+      },
+      "DeliveryPreferenceUpdate": {
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/DeliveryMethod"
+          },
+          "userAddressId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Useraddressid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method"
+        ],
+        "title": "DeliveryPreferenceUpdate"
+      },
+      "DeliveryStageCreate": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/DeliveryStageScope"
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,49}$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Position"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeliveryStageKind",
+            "default": "progress"
+          },
+          "isTerminal": {
+            "type": "boolean",
+            "title": "Isterminal",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scope",
+          "key",
+          "name",
+          "position"
+        ],
+        "title": "DeliveryStageCreate"
+      },
+      "DeliveryStageKind": {
+        "type": "string",
+        "enum": [
+          "progress",
+          "exception"
+        ],
+        "title": "DeliveryStageKind"
+      },
+      "DeliveryStageResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/DeliveryStageScope"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeliveryStageKind"
+          },
+          "isTerminal": {
+            "type": "boolean",
+            "title": "Isterminal"
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "key",
+          "name",
+          "position",
+          "kind",
+          "isTerminal",
+          "isActive"
+        ],
+        "title": "DeliveryStageResponse"
+      },
+      "DeliveryStageScope": {
+        "type": "string",
+        "enum": [
+          "international",
+          "national",
+          "pickup"
+        ],
+        "title": "DeliveryStageScope"
+      },
+      "DeliveryStageUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryStageKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isTerminal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isterminal"
+          },
+          "isActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isactive"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DeliveryStageUpdate"
+      },
       "ErrorResponse": {
         "properties": {
           "detail": {
@@ -3737,6 +4984,242 @@
           "detail"
         ],
         "title": "ErrorResponse"
+      },
+      "FulfillmentCreate": {
+        "properties": {
+          "carrier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NationalCarrier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trackingNumber": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trackingnumber"
+          },
+          "shippingCost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shippingcost"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "costPayer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShippingCostPayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FulfillmentCreate"
+      },
+      "FulfillmentResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "orderRequestId": {
+            "type": "integer",
+            "title": "Orderrequestid"
+          },
+          "method": {
+            "$ref": "#/components/schemas/DeliveryMethod"
+          },
+          "currentStage": {
+            "$ref": "#/components/schemas/DeliveryStageResponse"
+          },
+          "carrier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NationalCarrier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trackingNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trackingnumber"
+          },
+          "shippingCost": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shippingcost"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "costPayer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShippingCostPayer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recipientSnapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipientsnapshot"
+          },
+          "addressSnapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Addresssnapshot"
+          },
+          "lastCheckedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcheckedat"
+          },
+          "nextCheckAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcheckat"
+          },
+          "hasTrackingError": {
+            "type": "boolean",
+            "title": "Hastrackingerror"
+          },
+          "needsReview": {
+            "type": "boolean",
+            "title": "Needsreview"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "dateAdded": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Dateadded"
+          },
+          "dateUpdated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dateupdated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "orderRequestId",
+          "method",
+          "currentStage",
+          "carrier",
+          "trackingNumber",
+          "shippingCost",
+          "currency",
+          "costPayer",
+          "recipientSnapshot",
+          "addressSnapshot",
+          "lastCheckedAt",
+          "nextCheckAt",
+          "hasTrackingError",
+          "needsReview",
+          "events",
+          "dateAdded",
+          "dateUpdated"
+        ],
+        "title": "FulfillmentResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3768,6 +5251,222 @@
           "status"
         ],
         "title": "HealthResponse"
+      },
+      "InternationalShipmentCreate": {
+        "properties": {
+          "orderPeriodId": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Orderperiodid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "externalReferences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Externalreferences"
+          },
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/ShipmentOrderAllocation"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Allocations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "orderPeriodId",
+          "name",
+          "allocations"
+        ],
+        "title": "InternationalShipmentCreate"
+      },
+      "InternationalShipmentResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "orderPeriodId": {
+            "type": "integer",
+            "title": "Orderperiodid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "externalReferences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Externalreferences"
+          },
+          "currentStage": {
+            "$ref": "#/components/schemas/DeliveryStageResponse"
+          },
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/ShipmentAllocationResponse"
+            },
+            "type": "array",
+            "title": "Allocations"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "dateAdded": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Dateadded"
+          },
+          "dateUpdated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dateupdated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "orderPeriodId",
+          "name",
+          "reference",
+          "externalReferences",
+          "currentStage",
+          "allocations",
+          "events",
+          "dateAdded",
+          "dateUpdated"
+        ],
+        "title": "InternationalShipmentResponse"
+      },
+      "InternationalShipmentUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "externalReferences": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Externalreferences"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InternationalShipmentUpdate"
+      },
+      "InternationalTrackingSummary": {
+        "properties": {
+          "stageKey": {
+            "type": "string",
+            "title": "Stagekey"
+          },
+          "stageName": {
+            "type": "string",
+            "title": "Stagename"
+          },
+          "isPartial": {
+            "type": "boolean",
+            "title": "Ispartial"
+          },
+          "purchasingFinalized": {
+            "type": "boolean",
+            "title": "Purchasingfinalized"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stageKey",
+          "stageName",
+          "isPartial",
+          "purchasingFinalized"
+        ],
+        "title": "InternationalTrackingSummary"
+      },
+      "NationalCarrier": {
+        "type": "string",
+        "enum": [
+          "zoom",
+          "mrw"
+        ],
+        "title": "NationalCarrier"
       },
       "OrderPeriodCreate": {
         "properties": {
@@ -4610,6 +6309,44 @@
             "title": "Cancelledbyuserid",
             "description": "Usuario que canceló la Orden; nulo si no está cancelada."
           },
+          "paidAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paidat",
+            "description": "Fecha de confirmación manual del pago."
+          },
+          "paidByUserId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paidbyuserid",
+            "description": "Administrador que confirmó el pago."
+          },
+          "purchasingFinalizedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchasingfinalizedat",
+            "description": "Fecha en que se cerró la compra de la Orden."
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/OrderRequestItemResponse"
@@ -4696,6 +6433,7 @@
           "submitted",
           "in_review",
           "accepted",
+          "paid",
           "rejected",
           "cancelled"
         ],
@@ -4722,6 +6460,79 @@
         },
         "type": "object",
         "title": "OrderRequestUpdate"
+      },
+      "OrderTrackingResponse": {
+        "properties": {
+          "orderRequestId": {
+            "type": "integer",
+            "title": "Orderrequestid"
+          },
+          "isPaid": {
+            "type": "boolean",
+            "title": "Ispaid"
+          },
+          "paidAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paidat"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackingItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "internationalSummary": {
+            "$ref": "#/components/schemas/InternationalTrackingSummary"
+          },
+          "internationalShipments": {
+            "items": {
+              "$ref": "#/components/schemas/InternationalShipmentResponse"
+            },
+            "type": "array",
+            "title": "Internationalshipments"
+          },
+          "preference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryPreferenceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fulfillment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderRequestId",
+          "isPaid",
+          "paidAt",
+          "items",
+          "internationalSummary",
+          "internationalShipments",
+          "preference",
+          "fulfillment"
+        ],
+        "title": "OrderTrackingResponse"
       },
       "PermissionCode": {
         "type": "string",
@@ -4756,7 +6567,15 @@
           "order_requests.create.self",
           "order_requests.update.self",
           "order_requests.update.any",
-          "order_requests.review"
+          "order_requests.review",
+          "deliveries.read.self",
+          "deliveries.read.any",
+          "deliveries.select.self",
+          "deliveries.manage_payments",
+          "deliveries.manage",
+          "deliveries.refresh.self",
+          "deliveries.refresh.any",
+          "delivery_stages.manage"
         ],
         "title": "PermissionCode"
       },
@@ -4904,6 +6723,113 @@
         },
         "type": "object",
         "title": "RoleUpdate"
+      },
+      "ShipmentAllocationResponse": {
+        "properties": {
+          "orderRequestId": {
+            "type": "integer",
+            "title": "Orderrequestid"
+          },
+          "orderRequestItemId": {
+            "type": "integer",
+            "title": "Orderrequestitemid"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderRequestId",
+          "orderRequestItemId",
+          "quantity"
+        ],
+        "title": "ShipmentAllocationResponse"
+      },
+      "ShipmentItemQuantity": {
+        "properties": {
+          "orderRequestItemId": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Orderrequestitemid"
+          },
+          "quantity": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderRequestItemId",
+          "quantity"
+        ],
+        "title": "ShipmentItemQuantity"
+      },
+      "ShipmentOrderAllocation": {
+        "properties": {
+          "orderRequestId": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Orderrequestid"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ShipmentItemQuantity"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderRequestId"
+        ],
+        "title": "ShipmentOrderAllocation"
+      },
+      "ShippingCostPayer": {
+        "type": "string",
+        "enum": [
+          "free_win",
+          "recipient"
+        ],
+        "title": "ShippingCostPayer"
+      },
+      "TrackingItemResponse": {
+        "properties": {
+          "orderRequestItemId": {
+            "type": "integer",
+            "title": "Orderrequestitemid"
+          },
+          "agreedQuantity": {
+            "type": "integer",
+            "title": "Agreedquantity"
+          },
+          "purchasedQuantity": {
+            "type": "integer",
+            "title": "Purchasedquantity"
+          },
+          "pendingQuantity": {
+            "type": "integer",
+            "title": "Pendingquantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderRequestItemId",
+          "agreedQuantity",
+          "purchasedQuantity",
+          "pendingQuantity"
+        ],
+        "title": "TrackingItemResponse"
       },
       "UserAddressCreate": {
         "properties": {
@@ -5803,6 +7729,14 @@
     {
       "name": "order-requests",
       "description": "Envío y revisión de Órdenes dentro de un Pedido."
+    },
+    {
+      "name": "deliveries",
+      "description": "Compra, traslado y entrega de las Órdenes."
+    },
+    {
+      "name": "delivery-stages",
+      "description": "Catálogo configurable de etapas logísticas."
     },
     {
       "name": "users",

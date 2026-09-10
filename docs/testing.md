@@ -253,7 +253,14 @@ Las pruebas de Órdenes deben comprobar:
 Estas pruebas usan sesiones falsas o metadata local. No dependen de que el servicio
 de búsqueda esté ejecutándose.
 
-### 6.7 Configuración
+### 6.7 Seguimiento de entregas
+
+Las pruebas de entregas cubren pago, cantidades parciales, cierre de compra,
+etapas, correcciones, propiedad y copia de direcciones. Los adaptadores nacionales
+usan HTML local sanitizado. La suite nunca consulta las páginas reales de Zoom o
+MRW. El proceso periódico se prueba con proveedores falsos y un reloj controlado.
+
+### 6.8 Configuración
 
 Las pruebas de settings deben comprobar:
 
@@ -265,7 +272,7 @@ Las pruebas de settings deben comprobar:
 
 Las pruebas que modifiquen variables de entorno deben usar mecanismos temporales de pytest y restaurar el estado al finalizar.
 
-### 6.8 Caché
+### 6.9 Caché
 
 Comprueba por separado:
 

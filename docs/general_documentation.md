@@ -136,6 +136,8 @@ El repositorio contiene actualmente:
 - autorización por permisos y propiedad con identidad local temporal;
 - creación, consulta, modificación, cierre e historial de Pedidos;
 - creación, consulta, edición, revisión, precios, estados e historial de Órdenes;
+- confirmación manual del pago y seguimiento de compra y entrega de Órdenes;
+- envíos internacionales con compras parciales, retiro y envíos nacionales;
 - una sesión asíncrona de SQLAlchemy para PostgreSQL;
 - un DAO genérico con operaciones de consulta y persistencia;
 - un contrato de caché sustituible con implementaciones en memoria y Valkey;
@@ -151,7 +153,9 @@ La superficie HTTP registrada actualmente incluye:
 | Roles | `/roles` | CRUD de roles personalizados y asignación de permisos |
 | Permisos | `/permissions` | lectura de la tabla compartida; asignación limitada al Enum local |
 | Pedidos | `/order-periods` | crear, listar, obtener, modificar, cerrar y consultar historial |
-| Órdenes | `/order-requests` | crear, listar, obtener, editar nota e ítems, revisar, cotizar, aceptar, rechazar, cancelar, reabrir y consultar historial |
+| Órdenes | `/order-requests` | crear, listar, obtener, editar, revisar, confirmar pago y consultar historial o seguimiento |
+| Entregas | `/deliveries` | agrupar compras, actualizar etapas, preparar retiros y crear envíos nacionales |
+| Etapas de entrega | `/delivery-stages` | consultar y administrar el catálogo logístico |
 
 La raíz `/` devuelve un mensaje de bienvenida.
 
@@ -188,9 +192,8 @@ como obsoleto: su normalización no revierte ni amplía esa estrategia.
 También están pendientes de definición o finalización:
 
 - autenticación real, hashing de contraseñas y emisión de tokens;
-- pago y estado `paid` de las Órdenes;
-- cantidades efectivamente compradas y resultados posteriores a la revisión inicial;
-- dirección de entrega, comprobantes y trazabilidad de entrega;
+- comprobantes y cobros reales de las Órdenes;
+- adaptadores reales de Zoom y MRW, pendientes de sus páginas y muestras;
 - plataforma y URL de origen dentro del snapshot de un ítem;
 - vista consolidada y exportación administrativa por Pedido;
 - entorno Valkey disponible para validar la integración distribuida;
@@ -232,9 +235,27 @@ Cada mutación dependiente del estado bloquea la Orden y guarda su historial en 
 misma transacción. Retirar un ítem no lo elimina; si era el último activo, la
 Orden pasa a `cancelled`. Una operación sin cambios efectivos no genera un evento.
 
-Quedan expresamente fuera de esta versión: `paid`, cantidades compradas,
-dirección de entrega, comprobantes, plataforma/URL, vista consolidada,
-exportaciones y seguimiento de entrega.
+La fase posterior a la revisión permite confirmar `paid`, repartir cantidades
+compradas entre varios envíos y cerrar una compra parcial. La selección final
+admite retiro o una dirección guardada. Los comprobantes, la plataforma de
+origen, la vista consolidada y las exportaciones siguen fuera de esta versión.
+
+### 6.5 Entregas
+
+`deliveries` mantiene un historial distinto del historial de revisión. Una Orden
+pagada queda incluida en el Pedido y permanece esperando compra hasta que un
+administrador asigne cantidades a un envío internacional. Las cantidades de un
+ítem pueden repartirse, pero su suma nunca puede superar la cantidad acordada.
+
+Las etapas internacionales iniciales cubren compra confirmada, courier en USA,
+traslado a Venezuela, recepción y organización. Cuando la compra está cerrada y
+todos sus envíos están organizados, se crea un retiro o un envío nacional. El
+envío nacional copia la dirección y los datos del destinatario para conservar lo
+que se usó al despachar.
+
+Zoom y MRW comparten un contrato asíncrono. El proceso periódico y la solicitud
+manual ya tienen una frontera estable, pero los adaptadores reales requieren las
+URL y muestras de sus páginas. Free Win no envía notificaciones de entrega.
 
 ## 7) Arquitectura general
 

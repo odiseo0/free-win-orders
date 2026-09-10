@@ -35,6 +35,14 @@ OPENAPI_TAGS = [
         "description": "Envío y revisión de Órdenes dentro de un Pedido.",
     },
     {
+        "name": "deliveries",
+        "description": "Compra, traslado y entrega de las Órdenes.",
+    },
+    {
+        "name": "delivery-stages",
+        "description": "Catálogo configurable de etapas logísticas.",
+    },
+    {
         "name": "users",
         "description": "Usuarios que participan en Pedidos y administran Free Win.",
     },

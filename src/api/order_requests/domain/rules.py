@@ -16,6 +16,8 @@ _ALLOWED_TRANSITIONS = frozenset(
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.REJECTED),
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.CANCELLED),
         (OrderRequestStatus.ACCEPTED, OrderRequestStatus.IN_REVIEW),
+        (OrderRequestStatus.ACCEPTED, OrderRequestStatus.PAID),
+        (OrderRequestStatus.PAID, OrderRequestStatus.ACCEPTED),
         (OrderRequestStatus.REJECTED, OrderRequestStatus.IN_REVIEW),
         (OrderRequestStatus.CANCELLED, OrderRequestStatus.IN_REVIEW),
     }

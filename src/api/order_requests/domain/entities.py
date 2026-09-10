@@ -26,6 +26,7 @@ class OrderRequestStatus(StrEnum):
     SUBMITTED = "submitted"
     IN_REVIEW = "in_review"
     ACCEPTED = "accepted"
+    PAID = "paid"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
@@ -331,6 +332,18 @@ class OrderRequestResponse(BaseModel):
     cancelled_by_user_id: int | None = Field(
         default=None,
         description="Usuario que canceló la Orden; nulo si no está cancelada.",
+    )
+    paid_at: datetime | None = Field(
+        default=None,
+        description="Fecha de confirmación manual del pago.",
+    )
+    paid_by_user_id: int | None = Field(
+        default=None,
+        description="Administrador que confirmó el pago.",
+    )
+    purchasing_finalized_at: datetime | None = Field(
+        default=None,
+        description="Fecha en que se cerró la compra de la Orden.",
     )
     items: list[OrderRequestItemResponse] = Field(
         description="Ítems activos y retirados que preservan sus snapshots."

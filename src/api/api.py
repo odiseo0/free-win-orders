@@ -1,5 +1,10 @@
 from fastapi import APIRouter
 
+from src.api.deliveries import (
+    deliveries_router,
+    delivery_stages_router,
+    order_deliveries_router,
+)
 from src.api.health import router as health_router
 from src.api.order_periods import order_periods_router
 from src.api.order_requests import order_requests_router
@@ -15,3 +20,6 @@ router.include_router(roles_router, prefix="/roles")
 router.include_router(permissions_router, prefix="/permissions")
 router.include_router(order_periods_router, prefix="/order-periods")
 router.include_router(order_requests_router, prefix="/order-requests")
+router.include_router(order_deliveries_router, prefix="/order-requests")
+router.include_router(deliveries_router, prefix="/deliveries")
+router.include_router(delivery_stages_router, prefix="/delivery-stages")
