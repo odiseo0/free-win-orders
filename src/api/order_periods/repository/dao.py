@@ -12,6 +12,7 @@ from src.api.order_periods.domain import (
     OrderPeriodUpdate,
 )
 from src.core.db import DAO
+
 from .models import OrderPeriod, OrderPeriodHistory
 
 if TYPE_CHECKING:
