@@ -36,9 +36,9 @@ STAGES = (
 
 
 def upgrade() -> None:
-    op.drop_constraint("ck_order_requests_valid_status", "order_requests", type_="check")
+    op.drop_constraint(op.f("ck_order_requests_valid_status"), "order_requests", type_="check")
     op.create_check_constraint(
-        "ck_order_requests_valid_status",
+        op.f("ck_order_requests_valid_status"),
         "order_requests",
         "status IN ('submitted', 'in_review', 'accepted', 'paid', 'rejected', 'cancelled')",
     )
@@ -48,8 +48,8 @@ def upgrade() -> None:
     op.add_column("order_requests", sa.Column("purchasing_finalized_by_user_id", sa.BigInteger(), nullable=True))
     op.create_foreign_key(op.f("fk_order_requests_paid_by_user_id_users"), "order_requests", "users", ["paid_by_user_id"], ["id"])
     op.create_foreign_key(op.f("fk_order_requests_purchasing_finalized_by_user_id_users"), "order_requests", "users", ["purchasing_finalized_by_user_id"], ["id"])
-    op.create_check_constraint("ck_order_requests_consistent_payment_audit", "order_requests", "(paid_at IS NULL) = (paid_by_user_id IS NULL)")
-    op.create_check_constraint("ck_order_requests_consistent_purchasing_audit", "order_requests", "(purchasing_finalized_at IS NULL) = (purchasing_finalized_by_user_id IS NULL)")
+    op.create_check_constraint(op.f("ck_order_requests_consistent_payment_audit"), "order_requests", "(paid_at IS NULL) = (paid_by_user_id IS NULL)")
+    op.create_check_constraint(op.f("ck_order_requests_consistent_purchasing_audit"), "order_requests", "(purchasing_finalized_at IS NULL) = (purchasing_finalized_by_user_id IS NULL)")
 
     op.create_table(
         "delivery_stages",
@@ -202,18 +202,18 @@ def downgrade() -> None:
     op.drop_table("delivery_fulfillments")
     op.drop_table("delivery_preferences")
     op.drop_table("delivery_stages")
-    op.drop_constraint("ck_order_requests_consistent_purchasing_audit", "order_requests", type_="check")
-    op.drop_constraint("ck_order_requests_consistent_payment_audit", "order_requests", type_="check")
+    op.drop_constraint(op.f("ck_order_requests_consistent_purchasing_audit"), "order_requests", type_="check")
+    op.drop_constraint(op.f("ck_order_requests_consistent_payment_audit"), "order_requests", type_="check")
     op.drop_constraint(op.f("fk_order_requests_purchasing_finalized_by_user_id_users"), "order_requests", type_="foreignkey")
     op.drop_constraint(op.f("fk_order_requests_paid_by_user_id_users"), "order_requests", type_="foreignkey")
     op.drop_column("order_requests", "purchasing_finalized_by_user_id")
     op.drop_column("order_requests", "purchasing_finalized_at")
     op.drop_column("order_requests", "paid_by_user_id")
     op.drop_column("order_requests", "paid_at")
-    op.drop_constraint("ck_order_requests_valid_status", "order_requests", type_="check")
+    op.drop_constraint(op.f("ck_order_requests_valid_status"), "order_requests", type_="check")
     op.execute("UPDATE order_requests SET status = 'accepted' WHERE status = 'paid'")
     op.create_check_constraint(
-        "ck_order_requests_valid_status",
+        op.f("ck_order_requests_valid_status"),
         "order_requests",
         "status IN ('submitted', 'in_review', 'accepted', 'rejected', 'cancelled')",
     )
