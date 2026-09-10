@@ -9,8 +9,7 @@ class User(BaseModel):
     external_id: str | None = Field(
         default=None, description="Identificador de un sistema externo, si existe."
     )
-    first_name: str | None = Field(default=None, description="Nombre del usuario.")
-    last_name: str | None = Field(default=None, description="Apellido del usuario.")
+    name: str | None = Field(default=None, description="Nombre completo del usuario.")
     alias: str | None = Field(
         default=None, description="Nombre público opcional del usuario."
     )
@@ -30,8 +29,7 @@ class User(BaseModel):
 
 
 class UserCreate(User):
-    first_name: str = Field(default=..., description="Nombre del usuario.")
-    last_name: str = Field(default=..., description="Apellido del usuario.")
+    name: str = Field(default=..., description="Nombre completo del usuario.")
     email: str = Field(default=..., description="Correo de contacto del usuario.")
     password: str = Field(
         description=(

@@ -7184,15 +7184,10 @@
             "title": "Externalid",
             "description": "Identificador de un sistema externo, si existe."
           },
-          "firstName": {
+          "name": {
             "type": "string",
-            "title": "Firstname",
-            "description": "Nombre del usuario."
-          },
-          "lastName": {
-            "type": "string",
-            "title": "Lastname",
-            "description": "Apellido del usuario."
+            "title": "Name",
+            "description": "Nombre completo del usuario."
           },
           "alias": {
             "anyOf": [
@@ -7257,8 +7252,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "firstName",
-          "lastName",
+          "name",
           "email",
           "password"
         ],
@@ -7300,7 +7294,7 @@
             "title": "Externalid",
             "description": "Identificador de un sistema externo, si existe."
           },
-          "firstName": {
+          "name": {
             "anyOf": [
               {
                 "type": "string"
@@ -7309,20 +7303,8 @@
                 "type": "null"
               }
             ],
-            "title": "Firstname",
-            "description": "Nombre del usuario."
-          },
-          "lastName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lastname",
-            "description": "Apellido del usuario."
+            "title": "Name",
+            "description": "Nombre completo del usuario."
           },
           "alias": {
             "anyOf": [
@@ -7504,7 +7486,7 @@
             "title": "Externalid",
             "description": "Identificador de un sistema externo, si existe."
           },
-          "firstName": {
+          "name": {
             "anyOf": [
               {
                 "type": "string"
@@ -7513,20 +7495,8 @@
                 "type": "null"
               }
             ],
-            "title": "Firstname",
-            "description": "Nombre del usuario."
-          },
-          "lastName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lastname",
-            "description": "Apellido del usuario."
+            "title": "Name",
+            "description": "Nombre completo del usuario."
           },
           "alias": {
             "anyOf": [

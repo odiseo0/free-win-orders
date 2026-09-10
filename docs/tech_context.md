@@ -320,6 +320,9 @@ Search registra la suya en `free_win_search_alembic_version`.
 - `UserAddress`;
 - `UserRole`.
 
+`User` guarda el nombre completo en un solo campo `name`. La API usa el mismo
+campo tanto al crear y actualizar como al responder.
+
 El componente usa schemas Pydantic separados para base, creación, actualización y respuesta, y DAOs específicos basados en el DAO genérico.
 
 `UserRole` conserva temporalmente la compatibilidad entre `User` y el nuevo `Role`. La restricción única sobre `UserRole.role_id` garantiza un solo puente por rol. `RolePermission` implementa la relación muchos-a-muchos entre roles y el catálogo persistente de permisos.

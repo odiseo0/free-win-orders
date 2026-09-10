@@ -81,7 +81,9 @@ futuras del comportamiento disponible.
 
 ### 4.3 Usuario
 
-Un Usuario representa a una persona que interactúa con Free Win. El componente actual contempla información de identidad, contacto, rol y direcciones.
+Un Usuario representa a una persona que interactúa con Free Win. El componente
+usa un solo campo `name` para el nombre completo y también contempla información
+de contacto, rol y direcciones.
 
 ### 4.4 Dirección de usuario
 
@@ -250,8 +252,8 @@ administrador asigne cantidades a un envío internacional. Las cantidades de un
 Las etapas internacionales iniciales cubren compra confirmada, courier en USA,
 traslado a Venezuela, recepción y organización. Cuando la compra está cerrada y
 todos sus envíos están organizados, se crea un retiro o un envío nacional. El
-envío nacional copia la dirección y los datos del destinatario para conservar lo
-que se usó al despachar.
+envío nacional copia la dirección y los datos del destinatario, incluido su
+nombre completo, para conservar lo que se usó al despachar.
 
 Zoom y MRW comparten un contrato asíncrono. El proceso periódico y la solicitud
 manual ya tienen una frontera estable, pero los adaptadores reales requieren las

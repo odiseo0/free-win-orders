@@ -22,13 +22,26 @@ def test_registration_rejects_role_escalation() -> None:
     with pytest.raises(ValidationError):
         UserCreate.model_validate(
             {
-                "firstName": "Yugi",
-                "lastName": "Muto",
+                "name": "Yugi Muto",
                 "email": "yugi@example.com",
                 "password": "millennium-puzzle",
                 "roleId": 1,
             }
         )
+
+
+def test_user_contract_uses_one_name_field() -> None:
+    user = UserCreate.model_validate(
+        {
+            "name": "Yugi Muto",
+            "email": "yugi@example.com",
+            "password": "millennium-puzzle",
+        }
+    )
+
+    assert user.name == "Yugi Muto"
+    assert "first_name" not in type(user).model_fields
+    assert "last_name" not in type(user).model_fields
 
 
 def test_regular_update_has_no_role_field() -> None:
@@ -42,7 +55,7 @@ def test_user_response_never_exposes_password() -> None:
             "id": 1,
             "roleId": 2,
             "roleName": "User",
-            "firstName": "Yugi",
+            "name": "Yugi Muto",
         }
     )
     assert "password" not in response.model_dump()

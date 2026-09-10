@@ -54,8 +54,7 @@ async def test_users_endpoint_returns_the_published_paginated_shape(
                 [
                     {
                         "id": 7,
-                        "firstName": "Yugi",
-                        "lastName": "Muto",
+                        "name": "Yugi Muto",
                         "email": "yugi@example.test",
                     }
                 ],
@@ -72,8 +71,7 @@ async def test_users_endpoint_returns_the_published_paginated_shape(
         "items": [
             {
                 "externalId": None,
-                "firstName": "Yugi",
-                "lastName": "Muto",
+                "name": "Yugi Muto",
                 "alias": None,
                 "email": "yugi@example.test",
                 "phoneNumber": None,

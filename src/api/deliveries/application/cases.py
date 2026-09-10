@@ -799,8 +799,8 @@ async def create_fulfillment(
             else Empty
         )
 
-        if user is Empty or not user.first_name:
-            missing.append("firstName")
+        if user is Empty or not user.name:
+            missing.append("name")
 
         if user is Empty or not user.phone_number:
             missing.append("phoneNumber")
@@ -815,8 +815,7 @@ async def create_fulfillment(
             return Err(DeliveryMissingFields(tuple(missing)))
 
         recipient = {
-            "firstName": user.first_name,
-            "lastName": user.last_name,
+            "name": user.name,
             "phoneCode": user.phone_code,
             "phoneNumber": user.phone_number,
             "idNumber": user.id_number,

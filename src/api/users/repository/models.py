@@ -59,8 +59,7 @@ class User(Date, Base, kw_only=True):
     )
     external_id: Mapped[str | None]
     role_id: Mapped[int] = mapped_column(ForeignKey("user_roles.id"))
-    first_name: Mapped[str] = mapped_column(String(255))
-    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str] = mapped_column(String(511))
     alias: Mapped[str | None]
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
     password: Mapped[str] = mapped_column(String(320))
