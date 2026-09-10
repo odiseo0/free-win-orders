@@ -88,6 +88,8 @@ def test_models_define_database_invariants() -> None:
         "ck_order_requests_non_negative_shipping_price",
         "ck_order_requests_consistent_cancelled_status",
         "ck_order_requests_consistent_cancellation_audit",
+        "ck_order_requests_consistent_payment_audit",
+        "ck_order_requests_consistent_purchasing_audit",
     }
     assert _check_names(OrderRequestItem) == {
         "ck_order_request_items_positive_requested_quantity",

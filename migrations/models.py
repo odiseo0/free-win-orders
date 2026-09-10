@@ -1,3 +1,11 @@
+from src.api.deliveries.repository.models import (  # noqa: F401
+    DeliveryEvent,
+    DeliveryFulfillment,
+    DeliveryPreference,
+    DeliveryShipment,
+    DeliveryShipmentAllocation,
+    DeliveryStage,
+)
 from src.api.order_periods.repository.models import (  # noqa: F401
     OrderPeriod,
     OrderPeriodHistory,

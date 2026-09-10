@@ -125,11 +125,12 @@ def test_quantity_and_pricing_contracts_reject_fields_owned_by_the_other() -> No
         )
 
 
-def test_status_contract_contains_only_v1_states() -> None:
+def test_status_contract_contains_review_and_payment_states() -> None:
     assert {status.value for status in OrderRequestStatus} == {
         "submitted",
         "in_review",
         "accepted",
+        "paid",
         "rejected",
         "cancelled",
     }

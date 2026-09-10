@@ -22,6 +22,8 @@ from src.api.order_requests.domain import (
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.REJECTED),
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.CANCELLED),
         (OrderRequestStatus.ACCEPTED, OrderRequestStatus.IN_REVIEW),
+        (OrderRequestStatus.ACCEPTED, OrderRequestStatus.PAID),
+        (OrderRequestStatus.PAID, OrderRequestStatus.ACCEPTED),
         (OrderRequestStatus.REJECTED, OrderRequestStatus.IN_REVIEW),
         (OrderRequestStatus.CANCELLED, OrderRequestStatus.IN_REVIEW),
     ],
@@ -45,6 +47,8 @@ def test_transition_matrix_rejects_every_unconfirmed_pair(
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.REJECTED),
         (OrderRequestStatus.IN_REVIEW, OrderRequestStatus.CANCELLED),
         (OrderRequestStatus.ACCEPTED, OrderRequestStatus.IN_REVIEW),
+        (OrderRequestStatus.ACCEPTED, OrderRequestStatus.PAID),
+        (OrderRequestStatus.PAID, OrderRequestStatus.ACCEPTED),
         (OrderRequestStatus.REJECTED, OrderRequestStatus.IN_REVIEW),
         (OrderRequestStatus.CANCELLED, OrderRequestStatus.IN_REVIEW),
     }

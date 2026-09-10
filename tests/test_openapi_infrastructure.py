@@ -84,6 +84,8 @@ def test_openapi_exposes_project_metadata_and_ordered_tags() -> None:
         "health",
         "order-periods",
         "order-requests",
+        "deliveries",
+        "delivery-stages",
         "users",
         "user-addresses",
         "roles",

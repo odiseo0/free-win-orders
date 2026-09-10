@@ -2,11 +2,18 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.settings.api_settings import api_settings
+    from src.settings.auth_settings import auth_settings
     from src.settings.cache_settings import cache_settings
     from src.settings.db_settings import db_settings
-    from src.settings.auth_settings import auth_settings
+    from src.settings.delivery_settings import delivery_settings
 
-__all__ = ["api_settings", "auth_settings", "cache_settings", "db_settings"]
+__all__ = [
+    "api_settings",
+    "auth_settings",
+    "cache_settings",
+    "db_settings",
+    "delivery_settings",
+]
 
 
 def __getattr__(name: str) -> Any:
@@ -29,5 +36,10 @@ def __getattr__(name: str) -> Any:
         from src.settings.auth_settings import auth_settings
 
         return auth_settings
+
+    if name == "delivery_settings":
+        from src.settings.delivery_settings import delivery_settings
+
+        return delivery_settings
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
