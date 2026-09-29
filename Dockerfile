@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-ARG PYTHON_VERSION=3.13-slim
+ARG PYTHON_IMAGE=python:3.13.15-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b
 
-FROM python:${PYTHON_VERSION} AS builder
+FROM ${PYTHON_IMAGE} AS builder
 
 ARG PDM_VERSION=2.28.0
 
@@ -18,7 +18,7 @@ COPY pyproject.toml pdm.lock ./
 RUN pdm lock --check \
     && pdm sync --prod --no-self --clean-unselected
 
-FROM python:${PYTHON_VERSION} AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \

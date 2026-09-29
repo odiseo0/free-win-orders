@@ -41,42 +41,50 @@ Los componentes de `src/api/` siguen una arquitectura hexagonal pragmática:
 
 El caché vive en `src/core/services/cache/` y permite alternar entre memoria y Valkey mediante `CACHE_BACKEND`. La proyección de solo lectura usada para validar publicaciones externas está en `src/api/order_requests/repository/card_listings.py`.
 
-## Imagen Docker
+## Docker Compose
 
-La imagen contiene solo la API. PostgreSQL, Valkey, Meilisearch y
-`free-win-search` se ejecutan y administran fuera de este repositorio.
+Este repositorio inicia la API y el worker de entregas. No crea PostgreSQL,
+usuarios, permisos ni tablas. Ambos procesos leen la conexión existente desde
+`.env`.
 
-Construye e inicia la API con:
+Compose no resuelve la autenticación pendiente. Mantén `AUTH_MODE=disabled` y no
+expongas el sistema a usuarios anónimos hasta implementar autenticación real.
 
-```bash
-docker build -t free-win:local .
-docker run --rm --name free-win-api -p 8000:8000 --env-file .env free-win:local
-```
-
-La configuración entra mediante variables de entorno. La imagen no contiene el
-archivo `.env` ni secretos. Dentro del contenedor, `localhost` identifica al
-propio contenedor. Por ello `DB_HOST` y `CACHE_URL` deben apuntar al nombre DNS o
-la dirección del servicio externo. Usa `CACHE_BACKEND=memory` cuando no necesites
-Valkey.
-
-Las migraciones y el catálogo inicial son pasos explícitos y separados del
-arranque HTTP:
+Copia el ejemplo y configura tu PostgreSQL externo:
 
 ```bash
-docker run --rm --env-file .env free-win:local alembic upgrade head
-docker run --rm --env-file .env free-win:local python -m src.api.roles.bootstrap
+cp .env.example .env
 ```
 
-Antes de migrar una base compartida, sigue el orden definido en
-[`docs/tech_context.md`](docs/tech_context.md#152-orden-de-migración-de-la-base-compartida).
+Como mínimo, revisa `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USERNAME` y
+`DB_PASSWORD`. También puedes usar `SQLALCHEMY_DATABASE_URI`. El contenedor debe
+poder resolver y alcanzar el host configurado. Si PostgreSQL está en la misma
+máquina, `localhost` no sirve dentro del contenedor; usa
+`host.docker.internal` y añade el acceso del servidor PostgreSQL a esa conexión.
+
+Construye e inicia:
+
+```bash
+docker compose up -d --build
+```
+
+La API queda disponible solo en `http://127.0.0.1:8000`. Cambia
+`FREE_WIN_API_PORT` si ese puerto está ocupado. Consulta el estado con:
+
+```bash
+docker compose ps
+docker compose logs --tail=100 free-win-api
+```
+
+Compose no ejecuta Alembic, el bootstrap ni ninguna tarea de administración de
+PostgreSQL. Mantén esos procesos fuera de este arranque.
 
 La API expone dos comprobaciones:
 
 - `GET /health/live`: confirma que el proceso HTTP responde;
 - `GET /health/ready`: comprueba PostgreSQL y el caché configurado.
 
-Docker usa la primera como `HEALTHCHECK`. Una plataforma puede usar la segunda
-para dejar de enviar tráfico cuando una dependencia no esté disponible.
+Compose usa la primera como comprobación del proceso y no modifica la base.
 
 ## Documentación
 

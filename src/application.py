@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api import router
 from src.core.services.cache import close_cache, get_cache
+from src.settings.api_settings import api_settings
 
 API_DESCRIPTION = """
 Free Win centraliza los **Pedidos** de cartas de Yu-Gi-Oh! difíciles de conseguir
@@ -86,7 +87,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=api_settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

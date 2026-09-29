@@ -16,4 +16,5 @@ AGENTS.md
 README.md
 docs
 scripts
+compose.yaml
 tests

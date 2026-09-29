@@ -39,7 +39,7 @@ Este documento no cubre:
 | Gestor del proyecto | PDM |
 | Migraciones | Alembic con historial local y propiedad de tablas separada por servicio |
 | Frontend | Fuera del alcance de este repositorio |
-| Despliegue | Imagen Docker de la API; sin Compose ni configuración de plataforma |
+| Despliegue | Imagen y Compose de la API; PostgreSQL permanece externo |
 | Observabilidad | Sin stack estructurado de logs, métricas o tracing definido |
 
 ## 4) Runtime y dependencias
@@ -122,7 +122,9 @@ El middleware actual permite:
 - todos los métodos;
 - todos los headers.
 
-**Restricción actual**: esta configuración es permisiva y sirve como estado inicial de desarrollo. Antes de un despliegue accesible públicamente, los orígenes y capacidades permitidas deben definirse mediante configuración de entorno y revisarse junto con el cliente real.
+**Comportamiento actual**: `API_CORS_ALLOWED_ORIGINS` define los orígenes exactos.
+El valor local permite los puertos de desarrollo del cliente. Compose exige el
+origen HTTPS configurado para el cliente y no acepta `*`.
 
 ### 5.4 OpenAPI
 
@@ -468,39 +470,30 @@ tablas de Search mientras existan Órdenes que conserven la FK.
 
 El repositorio contiene:
 
-- un `Dockerfile` por etapas basado en Python 3.13 slim;
+- un `Dockerfile` por etapas fijado a Python 3.13.15 slim y a su digest;
 - instalación bloqueada con PDM 2.28.0 en la etapa de build;
 - una etapa final sin PDM ni dependencias de prueba;
 - ejecución con el usuario fijo `10001:10001`;
 - Uvicorn con un proceso sobre el puerto `8000`;
 - un `HEALTHCHECK` contra `GET /health/live`;
 - `.dockerignore`, que excluye `.env`, Git, entornos locales, pruebas y
-  documentación del contexto enviado al build.
+  documentación del contexto enviado al build;
+- `compose.yaml`, que inicia la API y el worker con la configuración de `.env` y
+  publica la API solo en `127.0.0.1`.
 
 El comando predeterminado inicia Uvicorn y puede reemplazarse para ejecutar
 Alembic o el bootstrap desde la misma imagen. El arranque HTTP no aplica
 migraciones ni modifica el catálogo.
 
-El repositorio no contiene Compose, manifiestos de plataforma, publicación a un
-registro ni configuración de CI. Tampoco crea o administra PostgreSQL, Valkey,
-Meilisearch o `free-win-search`.
+El repositorio no contiene publicación a un registro ni configuración de CI.
+Tampoco crea ni administra PostgreSQL, Valkey, Meilisearch o `free-win-search`.
 
-### 15.4 Uso de la imagen
+### 15.4 Uso de Compose
 
-```bash
-docker build -t free-win:local .
-docker run --rm --name free-win-api -p 8000:8000 --env-file .env free-win:local
-docker run --rm --env-file .env free-win:local alembic upgrade head
-docker run --rm --env-file .env free-win:local python -m src.api.roles.bootstrap
-```
-
-La imagen no copia `.env` ni secretos. La plataforma debe inyectar la
-configuración durante la ejecución. Dentro del contenedor, `localhost` apunta al
-propio contenedor: `DB_HOST` y `CACHE_URL` deben usar el nombre DNS o la dirección
-del servicio externo. Si no hay Valkey, usa `CACHE_BACKEND=memory`.
-
-El orden de migración de la sección anterior sigue siendo obligatorio cuando
-Free Win y Search usan la misma base.
+`README.md` contiene el uso completo. Compose carga `.env` sin cambiar las
+credenciales, usuarios o permisos de PostgreSQL. No ejecuta migraciones ni el
+bootstrap durante el arranque. La API se publica en `127.0.0.1:8000`; el worker
+no publica puertos.
 
 ## 16) Observabilidad y seguridad operativa
 
@@ -521,7 +514,7 @@ La futura trazabilidad del dominio no debe confundirse con observabilidad técni
 
 Riesgos que deben resolverse antes de exposición pública:
 
-- CORS permisivo;
+- cualquier origen CORS adicional debe declararse de forma explícita y revisarse;
 - autenticación real, hashing de contraseñas y tokens todavía no definidos;
 - la identidad `AUTH_MODE=local` es exclusivamente temporal y está deshabilitada por defecto;
 - el almacenamiento de contraseñas sigue pendiente de endurecimiento, aunque ya no se expone en respuestas;
@@ -538,7 +531,7 @@ Los secretos deben permanecer en variables de entorno y nunca registrarse ni inc
 | `DBSettings` no expone atributos usados por la sesión | Arranque de persistencia incompleto | `docs/tech_context.md` |
 | Contrato de errores inconsistente | API difícil de consumir de forma uniforme | `docs/system_patterns.md` |
 | Solo identidad local temporal | API no preparada todavía para exposición pública | documento de seguridad futuro |
-| Sin despliegue ni CI definidos | Operación no reproducible | documento de despliegue futuro |
+| Sin publicación de imágenes ni CI definidos | El servidor debe construir y validar las imágenes | documento de despliegue futuro |
 
 Esta tabla describe el estado actual; no asigna prioridad automáticamente ni amplía el alcance de tareas futuras.
 
