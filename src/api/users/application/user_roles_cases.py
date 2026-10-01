@@ -7,7 +7,7 @@ from src.api.users.domain import UserRoleCreate, UserRoleNotFound, UserRoleUpdat
 from src.api.users.repository import UserRole
 from src.api.users.repository import dao_user_roles as dao
 from src.core import Err, Ok, Result
-from src.core.utils.filters import FilterTypes, OrderBy
+from src.core.utils.filters import OrderBy
 from src.core.utils.utils import Empty
 
 if TYPE_CHECKING:
@@ -31,7 +31,6 @@ async def get_multi(
     shows: int | None = None,
     filters: dict[str, Any] | None = None,
     order_by: OrderBy | list[tuple[str, bool]] | None = None,
-    complex_filters: list[FilterTypes] | None = None,
 ) -> Result[tuple[list[UserRole], int], Never]:
     data, count = await dao.get_multi(
         db,
@@ -39,7 +38,6 @@ async def get_multi(
         shows=shows,
         where=filters,
         ordering=order_by or [("id", True)],
-        complex_filters=complex_filters,
     )
 
     return Ok((data, count))

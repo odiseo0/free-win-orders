@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Never, cast
+from typing import TYPE_CHECKING, Any, Never
 
 from src.api.roles.domain import RoleNotFound
 from src.api.users.domain import UserCreate, UserNotFound, UserUpdate
@@ -8,7 +8,7 @@ from src.api.users.repository import User
 from src.api.users.repository import dao_user_roles as role_dao
 from src.api.users.repository import dao_users as dao
 from src.core import Err, Ok, Result
-from src.core.utils.filters import FilterTypes, OrderBy
+from src.core.utils.filters import OrderBy
 from src.core.utils.utils import Empty
 
 if TYPE_CHECKING:
@@ -30,7 +30,6 @@ async def get_multi(
     shows: int | None = None,
     filters: dict[str, Any] | None = None,
     order_by: OrderBy | list[tuple[str, bool]] | None = None,
-    complex_filters: list[FilterTypes] | None = None,
 ) -> Result[tuple[list[User], int], Never]:
     data, count = await dao.get_multi(
         db,
@@ -38,7 +37,6 @@ async def get_multi(
         shows=shows,
         where=filters,
         ordering=order_by or [("id", True)],
-        complex_filters=complex_filters,
     )
 
     return Ok((data, count))
