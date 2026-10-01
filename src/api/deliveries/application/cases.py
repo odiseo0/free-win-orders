@@ -218,6 +218,7 @@ async def mark_paid(
     except DAOError:
         await db.rollback()
         raise
+
     return Ok(_order_response(request))
 
 
@@ -302,6 +303,7 @@ async def create_stage(
         return Err(DeliveryConflict("stage_key_exists"))
 
     stage = DeliveryStage(**data.model_dump(mode="python"))
+
     await dao_delivery_stages.add(db, stage)
     await db.commit()
 
@@ -503,6 +505,7 @@ async def get_international_shipment(
 
         if request is not Empty:
             owner_ids.add(request.created_by_user_id)
+
             if request.created_by_user_id == actor.user_id:
                 visible_request_ids.add(request.id)
 
